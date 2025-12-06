@@ -45,5 +45,27 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // Remove listeners
   removeAllListeners: (channel) => {
     ipcRenderer.removeAllListeners(channel);
-  }
+  },
+
+  // =====================
+  // Virtual Camera API
+  // =====================
+
+  // Detect available virtual camera drivers
+  vcamDetectDrivers: () => ipcRenderer.invoke('vcam-detect-drivers'),
+
+  // Install virtual camera driver
+  vcamInstallDriver: () => ipcRenderer.invoke('vcam-install-driver'),
+
+  // Start virtual camera
+  vcamStart: (options) => ipcRenderer.invoke('vcam-start', options),
+
+  // Stop virtual camera
+  vcamStop: () => ipcRenderer.invoke('vcam-stop'),
+
+  // Get virtual camera status
+  vcamGetStatus: () => ipcRenderer.invoke('vcam-status'),
+
+  // Send frame to virtual camera
+  vcamSendFrame: (frameData) => ipcRenderer.send('vcam-send-frame', frameData)
 });

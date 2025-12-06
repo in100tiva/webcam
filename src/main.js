@@ -8,6 +8,7 @@ const WebSocket = require('ws');
 const os = require('os');
 const QRCode = require('qrcode');
 const selfsigned = require('selfsigned');
+const VirtualCamera = require('./virtualcam');
 
 let mainWindow;
 let cleanWindow; // Clean output window for OBS capture
@@ -17,6 +18,9 @@ let httpServer;
 let wssServer; // HTTPS server for WebSocket
 let wss;
 let connectedClients = new Set();
+
+// Virtual Camera instance
+let virtualCamera = null;
 
 const HTTPS_PORT = 8443;
 const HTTP_PORT = 8080;
@@ -384,6 +388,62 @@ ipcMain.handle('close-clean-window', () => {
 // Check if clean window is open
 ipcMain.handle('is-clean-window-open', () => {
   return cleanWindow && !cleanWindow.isDestroyed();
+});
+
+// =====================
+// Virtual Camera IPC Handlers
+// =====================
+
+// Initialize virtual camera
+function initVirtualCamera() {
+  if (!virtualCamera) {
+    virtualCamera = new VirtualCamera();
+  }
+  return virtualCamera;
+}
+
+// Detect available virtual camera drivers
+ipcMain.handle('vcam-detect-drivers', async () => {
+  const vcam = initVirtualCamera();
+  return await vcam.detectDrivers();
+});
+
+// Install virtual camera driver
+ipcMain.handle('vcam-install-driver', async () => {
+  const vcam = initVirtualCamera();
+  return await vcam.installDriver();
+});
+
+// Start virtual camera
+ipcMain.handle('vcam-start', async (event, options = {}) => {
+  const vcam = initVirtualCamera();
+  const { driverId, width = 1280, height = 720, fps = 30 } = options;
+  return await vcam.start(driverId, width, height, fps);
+});
+
+// Stop virtual camera
+ipcMain.handle('vcam-stop', () => {
+  if (virtualCamera) {
+    return virtualCamera.stop();
+  }
+  return { success: false, message: 'Virtual camera não inicializada' };
+});
+
+// Get virtual camera status
+ipcMain.handle('vcam-status', () => {
+  if (virtualCamera) {
+    return virtualCamera.getStatus();
+  }
+  return { isRunning: false };
+});
+
+// Send frame to virtual camera (called from renderer when receiving video frame)
+ipcMain.on('vcam-send-frame', (event, frameData) => {
+  if (virtualCamera && virtualCamera.isRunning) {
+    // frameData is base64 JPEG
+    const buffer = Buffer.from(frameData, 'base64');
+    virtualCamera.sendJpegFrame(buffer);
+  }
 });
 
 // App lifecycle

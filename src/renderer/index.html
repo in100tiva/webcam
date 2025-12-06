@@ -150,18 +150,35 @@
 
         <!-- Virtual Webcam -->
         <div class="panel-section">
-          <h3>Virtual Webcam (OBS)</h3>
-          <button id="btnOpenCleanWindow" class="action-btn full-width">
-            🎥 Abrir Janela Limpa
-          </button>
-          <div class="virtual-webcam-hint">
-            <p><strong>Para usar como webcam:</strong></p>
-            <ol>
-              <li>Clique em "Abrir Janela Limpa"</li>
-              <li>No OBS, adicione "Captura de Janela"</li>
-              <li>Selecione "Phone Webcam - Clean Output"</li>
-              <li>Ative "Iniciar Camera Virtual" no OBS</li>
-            </ol>
+          <h3>🎥 Webcam Virtual</h3>
+          <div class="vcam-status" id="vcamStatus">
+            <div class="vcam-status-row">
+              <span class="vcam-status-dot" id="vcamStatusDot"></span>
+              <span id="vcamStatusText">Verificando drivers...</span>
+            </div>
+          </div>
+
+          <div class="vcam-drivers" id="vcamDrivers">
+            <!-- Drivers will be listed here -->
+          </div>
+
+          <div class="vcam-controls">
+            <button id="btnVcamToggle" class="action-btn full-width vcam-btn" disabled>
+              ▶️ Iniciar Webcam Virtual
+            </button>
+            <button id="btnVcamInstall" class="action-btn full-width vcam-install-btn" style="display: none;">
+              ⬇️ Instalar Driver
+            </button>
+          </div>
+
+          <div class="vcam-hint" id="vcamHint">
+            <p>A webcam virtual permite usar a câmera do celular em qualquer app (Zoom, Meet, Teams, etc.)</p>
+          </div>
+
+          <div class="vcam-fallback">
+            <button id="btnOpenCleanWindow" class="action-btn full-width secondary">
+              🪟 Método Alternativo (OBS)
+            </button>
           </div>
         </div>
       </aside>

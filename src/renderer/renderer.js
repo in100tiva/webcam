@@ -421,5 +421,192 @@ window.electronAPI.onClientDisconnected((data) => {
 // Make copyToClipboard available globally
 window.copyToClipboard = copyToClipboard;
 
+// =====================
+// Virtual Camera Logic
+// =====================
+
+const vcamStatusDot = document.getElementById('vcamStatusDot');
+const vcamStatusText = document.getElementById('vcamStatusText');
+const vcamDrivers = document.getElementById('vcamDrivers');
+const btnVcamToggle = document.getElementById('btnVcamToggle');
+const btnVcamInstall = document.getElementById('btnVcamInstall');
+const vcamHint = document.getElementById('vcamHint');
+
+let vcamDriversList = [];
+let selectedDriver = null;
+let isVcamRunning = false;
+
+// Detect available virtual camera drivers
+async function detectVcamDrivers() {
+  vcamStatusText.textContent = 'Verificando drivers...';
+  vcamStatusDot.className = 'vcam-status-dot';
+
+  try {
+    vcamDriversList = await window.electronAPI.vcamDetectDrivers();
+
+    vcamDrivers.innerHTML = '';
+
+    if (vcamDriversList.length === 0) {
+      vcamStatusText.textContent = 'Nenhum driver encontrado';
+      vcamStatusDot.classList.add('error');
+      btnVcamToggle.disabled = true;
+      btnVcamInstall.style.display = 'block';
+
+      vcamHint.innerHTML = `
+        <p><strong>Driver necessário!</strong></p>
+        <p>Instale o OBS Studio para obter o OBS Virtual Camera, ou clique em "Instalar Driver".</p>
+      `;
+    } else {
+      vcamStatusText.textContent = `${vcamDriversList.length} driver(s) disponível(is)`;
+      vcamStatusDot.classList.add('active');
+      btnVcamToggle.disabled = false;
+      btnVcamInstall.style.display = 'none';
+
+      // Display available drivers
+      vcamDriversList.forEach((driver, index) => {
+        const driverItem = document.createElement('div');
+        driverItem.className = 'vcam-driver-item' + (index === 0 ? ' selected' : '');
+        driverItem.innerHTML = `
+          <span class="vcam-driver-icon">📹</span>
+          <span class="vcam-driver-name">${driver.name}</span>
+          <span class="vcam-driver-status">Instalado</span>
+        `;
+        driverItem.addEventListener('click', () => selectDriver(driver, driverItem));
+        vcamDrivers.appendChild(driverItem);
+      });
+
+      // Select first driver by default
+      selectedDriver = vcamDriversList[0];
+
+      vcamHint.innerHTML = `<p>Clique em "Iniciar Webcam Virtual" para usar a câmera do celular em qualquer aplicativo!</p>`;
+    }
+  } catch (error) {
+    console.error('Error detecting vcam drivers:', error);
+    vcamStatusText.textContent = 'Erro ao verificar drivers';
+    vcamStatusDot.classList.add('error');
+  }
+}
+
+// Select a driver
+function selectDriver(driver, element) {
+  selectedDriver = driver;
+
+  // Update UI
+  document.querySelectorAll('.vcam-driver-item').forEach(el => el.classList.remove('selected'));
+  element.classList.add('selected');
+
+  showToast(`Driver selecionado: ${driver.name}`);
+}
+
+// Toggle virtual camera
+async function toggleVcam() {
+  if (isVcamRunning) {
+    await stopVcam();
+  } else {
+    await startVcam();
+  }
+}
+
+// Start virtual camera
+async function startVcam() {
+  if (!selectedDriver) {
+    showToast('Selecione um driver primeiro');
+    return;
+  }
+
+  if (!isConnected) {
+    showToast('Conecte um celular primeiro');
+    return;
+  }
+
+  btnVcamToggle.textContent = '⏳ Iniciando...';
+  btnVcamToggle.disabled = true;
+
+  try {
+    const result = await window.electronAPI.vcamStart({
+      driverId: selectedDriver.id,
+      width: 1280,
+      height: 720,
+      fps: 30
+    });
+
+    if (result.success) {
+      isVcamRunning = true;
+      btnVcamToggle.textContent = '⏹️ Parar Webcam Virtual';
+      btnVcamToggle.classList.add('running');
+      btnVcamToggle.disabled = false;
+      vcamStatusText.textContent = 'Webcam virtual ativa!';
+      showToast('Webcam virtual iniciada!');
+    } else {
+      btnVcamToggle.textContent = '▶️ Iniciar Webcam Virtual';
+      btnVcamToggle.disabled = false;
+      showToast(result.message || 'Erro ao iniciar');
+    }
+  } catch (error) {
+    console.error('Error starting vcam:', error);
+    btnVcamToggle.textContent = '▶️ Iniciar Webcam Virtual';
+    btnVcamToggle.disabled = false;
+    showToast('Erro ao iniciar webcam virtual');
+  }
+}
+
+// Stop virtual camera
+async function stopVcam() {
+  try {
+    await window.electronAPI.vcamStop();
+    isVcamRunning = false;
+    btnVcamToggle.textContent = '▶️ Iniciar Webcam Virtual';
+    btnVcamToggle.classList.remove('running');
+    vcamStatusText.textContent = `${vcamDriversList.length} driver(s) disponível(is)`;
+    showToast('Webcam virtual parada');
+  } catch (error) {
+    console.error('Error stopping vcam:', error);
+  }
+}
+
+// Install virtual camera driver
+async function installVcamDriver() {
+  btnVcamInstall.textContent = '⏳ Instalando...';
+  btnVcamInstall.disabled = true;
+
+  try {
+    const result = await window.electronAPI.vcamInstallDriver();
+
+    if (result.success) {
+      showToast(result.message);
+      // Re-detect drivers after installation
+      await detectVcamDrivers();
+    } else {
+      showToast(result.message || 'Erro ao instalar driver');
+    }
+  } catch (error) {
+    console.error('Error installing driver:', error);
+    showToast('Erro ao instalar driver');
+  }
+
+  btnVcamInstall.textContent = '⬇️ Instalar Driver';
+  btnVcamInstall.disabled = false;
+}
+
+// Send frames to virtual camera when receiving video
+function handleVideoFrameWithVcam(frameData) {
+  // Call original handler
+  handleVideoFrame(frameData);
+
+  // Also send to virtual camera if running
+  if (isVcamRunning) {
+    window.electronAPI.vcamSendFrame(frameData);
+  }
+}
+
+// Event listeners for virtual camera
+btnVcamToggle.addEventListener('click', toggleVcam);
+btnVcamInstall.addEventListener('click', installVcamDriver);
+
+// Update video frame handler to include vcam
+window.electronAPI.removeAllListeners('video-frame');
+window.electronAPI.onVideoFrame(handleVideoFrameWithVcam);
+
 // Initialize
 initConnectionInfo();
+detectVcamDrivers();
