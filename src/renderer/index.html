@@ -41,6 +41,9 @@
           <button id="btnMirror" class="control-btn" title="Espelhar">
             <span>↔️</span>
           </button>
+          <button id="btnRotate" class="control-btn" title="Rotacionar 90°">
+            <span>🔃</span>
+          </button>
         </div>
       </section>
 
@@ -122,6 +125,25 @@
               <option value="low">Baixa (480p)</option>
               <option value="medium" selected>Média (720p)</option>
               <option value="high">Alta (1080p)</option>
+            </select>
+          </div>
+          <div class="aspect-control">
+            <label>Proporção:</label>
+            <select id="aspectSelect">
+              <option value="auto" selected>Automático</option>
+              <option value="16-9">16:9 (Widescreen)</option>
+              <option value="4-3">4:3 (Clássico)</option>
+              <option value="1-1">1:1 (Quadrado)</option>
+              <option value="9-16">9:16 (Retrato)</option>
+            </select>
+          </div>
+          <div class="rotation-control">
+            <label>Rotação:</label>
+            <select id="rotationSelect">
+              <option value="0" selected>0° (Normal)</option>
+              <option value="90">90° (Direita)</option>
+              <option value="180">180° (Invertido)</option>
+              <option value="270">270° (Esquerda)</option>
             </select>
           </div>
         </div>
