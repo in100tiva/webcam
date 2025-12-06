@@ -311,6 +311,18 @@ body {
   outline: 2px solid var(--accent);
 }
 
+/* SSL hint */
+.ssl-hint {
+  margin-top: 12px;
+  padding: 10px;
+  background: rgba(233, 69, 96, 0.1);
+  border-left: 3px solid var(--accent);
+  border-radius: 4px;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  line-height: 1.4;
+}
+
 /* Footer */
 .footer {
   text-align: center;

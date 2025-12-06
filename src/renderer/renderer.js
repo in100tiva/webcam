@@ -7,7 +7,7 @@ const statusText = statusIndicator.querySelector('.status-text');
 const qrCode = document.getElementById('qrCode');
 const connectionUrl = document.getElementById('connectionUrl');
 const serverIP = document.getElementById('serverIP');
-const httpPort = document.getElementById('httpPort');
+const httpsPort = document.getElementById('httpsPort');
 const wsPort = document.getElementById('wsPort');
 const connectedDevices = document.getElementById('connectedDevices');
 const currentFPS = document.getElementById('currentFPS');
@@ -41,7 +41,7 @@ async function initConnectionInfo() {
     serverIP.textContent = info.ip;
 
     const status = await window.electronAPI.getServerStatus();
-    httpPort.textContent = status.httpPort;
+    httpsPort.textContent = status.httpsPort;
     wsPort.textContent = status.wsPort;
     connectedDevices.textContent = status.connectedClients;
 
