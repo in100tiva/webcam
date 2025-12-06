@@ -330,18 +330,18 @@
     let mediaStream = null;
     let isStreaming = false;
     let currentFacingMode = 'environment'; // 'environment' = back, 'user' = front
-    let frameInterval = null;
     let frameCount = 0;
     let lastFPSUpdate = Date.now();
     let flashEnabled = false;
 
-    // Quality settings
+    // Quality settings - optimized for network performance
     const qualitySettings = {
-      low: { width: 640, height: 480, quality: 0.5, fps: 15 },
-      medium: { width: 1280, height: 720, quality: 0.7, fps: 24 },
-      high: { width: 1920, height: 1080, quality: 0.85, fps: 30 }
+      low: { width: 640, height: 480, quality: 0.6, fps: 20 },
+      medium: { width: 1280, height: 720, quality: 0.65, fps: 20 },
+      high: { width: 1920, height: 1080, quality: 0.5, fps: 15 }  // Lower FPS for 1080p to avoid lag
     };
     let currentQuality = 'medium';
+    let lastFrameTime = 0;
 
     // Get WebSocket URL from server
     async function getConfig() {
@@ -531,13 +531,35 @@
       btnToggleStream.classList.add('active');
 
       const settings = qualitySettings[currentQuality];
-      const ctx = captureCanvas.getContext('2d');
+      const ctx = captureCanvas.getContext('2d', { alpha: false, desynchronized: true });
+      const frameDelay = 1000 / settings.fps;
 
-      captureCanvas.width = settings.width;
-      captureCanvas.height = settings.height;
+      // Scale down canvas for better performance on high res
+      const scale = currentQuality === 'high' ? 0.75 : 1;
+      captureCanvas.width = Math.floor(settings.width * scale);
+      captureCanvas.height = Math.floor(settings.height * scale);
+
+      let isSending = false;
 
       const captureAndSend = () => {
-        if (!isStreaming || !ws || ws.readyState !== WebSocket.OPEN) return;
+        if (!isStreaming) return;
+
+        const now = performance.now();
+        const elapsed = now - lastFrameTime;
+
+        // Skip frame if not enough time passed or still sending previous
+        if (elapsed < frameDelay || isSending) {
+          requestAnimationFrame(captureAndSend);
+          return;
+        }
+
+        if (!ws || ws.readyState !== WebSocket.OPEN) {
+          requestAnimationFrame(captureAndSend);
+          return;
+        }
+
+        lastFrameTime = now;
+        isSending = true;
 
         // Draw video frame to canvas
         ctx.drawImage(cameraPreview, 0, 0, captureCanvas.width, captureCanvas.height);
@@ -548,11 +570,16 @@
             ws.send(blob);
             updateFPS();
           }
+          isSending = false;
+
+          if (isStreaming) {
+            requestAnimationFrame(captureAndSend);
+          }
         }, 'image/jpeg', settings.quality);
       };
 
-      // Start capture loop
-      frameInterval = setInterval(captureAndSend, 1000 / settings.fps);
+      // Start capture loop using requestAnimationFrame
+      requestAnimationFrame(captureAndSend);
 
       showToast('Streaming iniciado');
     }
@@ -562,11 +589,7 @@
       isStreaming = false;
       btnToggleStream.textContent = '⏺️';
       btnToggleStream.classList.remove('active');
-
-      if (frameInterval) {
-        clearInterval(frameInterval);
-        frameInterval = null;
-      }
+      lastFrameTime = 0;
     }
 
     // Toggle streaming
