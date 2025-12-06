@@ -3,7 +3,7 @@
  * Sends video frames to a virtual camera device that other applications can use
  */
 
-const { spawn, exec } = require('child_process');
+const { spawn, exec, execSync } = require('child_process');
 const path = require('path');
 const fs = require('fs');
 const os = require('os');
@@ -12,9 +12,15 @@ const os = require('os');
 let ffmpegPath;
 try {
   ffmpegPath = require('ffmpeg-static');
+  // On Windows, ensure the path is quoted if it contains spaces
+  if (os.platform() === 'win32' && ffmpegPath.includes(' ')) {
+    ffmpegPath = `"${ffmpegPath}"`;
+  }
 } catch (e) {
   ffmpegPath = 'ffmpeg'; // Fallback to system ffmpeg
 }
+
+console.log('FFmpeg path:', ffmpegPath);
 
 class VirtualCamera {
   constructor() {
@@ -33,22 +39,39 @@ class VirtualCamera {
   async detectDrivers() {
     const drivers = [];
 
+    console.log('Detecting drivers for platform:', this.platform);
+
     if (this.platform === 'win32') {
-      // Check for OBS Virtual Camera
-      const obsVCam = await this.checkWindowsDriver('OBS Virtual Camera');
-      if (obsVCam) drivers.push({ name: 'OBS Virtual Camera', id: 'obs', installed: true });
+      // Get list of all video devices
+      const devices = await this.listWindowsVideoDevices();
+      console.log('Found Windows video devices:', devices);
 
-      // Check for OBS-Camera (older version)
-      const obsCamera = await this.checkWindowsDriver('OBS-Camera');
-      if (obsCamera) drivers.push({ name: 'OBS-Camera', id: 'obs-legacy', installed: true });
+      // Known virtual camera patterns
+      const virtualCamPatterns = [
+        { pattern: /obs.?virtual.?cam/i, name: 'OBS Virtual Camera', id: 'obs' },
+        { pattern: /obs-camera/i, name: 'OBS-Camera', id: 'obs-legacy' },
+        { pattern: /unity.?video.?capture/i, name: 'Unity Video Capture', id: 'unity' },
+        { pattern: /snap.?camera/i, name: 'Snap Camera', id: 'snap' },
+        { pattern: /manycam/i, name: 'ManyCam Virtual Webcam', id: 'manycam' },
+        { pattern: /xsplit/i, name: 'XSplit VCam', id: 'xsplit' },
+        { pattern: /virtual.?cam/i, name: 'Virtual Camera', id: 'virtual' },
+        { pattern: /droidcam/i, name: 'DroidCam', id: 'droidcam' },
+        { pattern: /iriun/i, name: 'Iriun Webcam', id: 'iriun' },
+        { pattern: /epoccam/i, name: 'EpocCam', id: 'epoccam' },
+      ];
 
-      // Check for Unity Capture
-      const unityCapture = await this.checkWindowsDriver('Unity Video Capture');
-      if (unityCapture) drivers.push({ name: 'Unity Video Capture', id: 'unity', installed: true });
-
-      // Check for Snap Camera
-      const snapCamera = await this.checkWindowsDriver('Snap Camera');
-      if (snapCamera) drivers.push({ name: 'Snap Camera', id: 'snap', installed: true });
+      for (const device of devices) {
+        for (const vcam of virtualCamPatterns) {
+          if (vcam.pattern.test(device)) {
+            drivers.push({
+              name: device, // Use actual device name
+              id: vcam.id,
+              installed: true
+            });
+            break;
+          }
+        }
+      }
 
     } else if (this.platform === 'linux') {
       // Check for v4l2loopback
@@ -63,17 +86,55 @@ class VirtualCamera {
       if (obsVCam) drivers.push({ name: 'OBS Virtual Camera', id: 'obs-mac', installed: true });
     }
 
+    console.log('Detected drivers:', drivers);
     return drivers;
   }
 
   /**
-   * Check for Windows DirectShow device
+   * List all Windows video devices using FFmpeg
    */
-  checkWindowsDriver(driverName) {
+  listWindowsVideoDevices() {
     return new Promise((resolve) => {
-      exec(`${ffmpegPath} -list_devices true -f dshow -i dummy 2>&1`, (error, stdout, stderr) => {
-        const output = stderr || stdout;
-        resolve(output.toLowerCase().includes(driverName.toLowerCase()));
+      const cmd = `${ffmpegPath} -list_devices true -f dshow -i dummy 2>&1`;
+      console.log('Running command:', cmd);
+
+      exec(cmd, { shell: true }, (error, stdout, stderr) => {
+        const output = (stderr || '') + (stdout || '');
+        console.log('FFmpeg output:', output);
+
+        const devices = [];
+
+        // Parse the output to find video devices
+        // Format: [dshow @ ...] "Device Name" (video)
+        const lines = output.split('\n');
+        let inVideoSection = false;
+
+        for (const line of lines) {
+          // Check if we're entering video devices section
+          if (line.includes('DirectShow video devices')) {
+            inVideoSection = true;
+            continue;
+          }
+
+          // Check if we're leaving video section (entering audio)
+          if (line.includes('DirectShow audio devices')) {
+            inVideoSection = false;
+            continue;
+          }
+
+          if (inVideoSection) {
+            // Match device names in quotes
+            const match = line.match(/"([^"]+)"/);
+            if (match && match[1]) {
+              // Skip "Alternative name" entries
+              if (!line.includes('Alternative name')) {
+                devices.push(match[1]);
+              }
+            }
+          }
+        }
+
+        resolve(devices);
       });
     });
   }
@@ -133,26 +194,14 @@ class VirtualCamera {
    * Install driver on Windows
    */
   async installWindowsDriver() {
-    const driverPath = path.join(process.resourcesPath || path.join(__dirname, '../../'), 'drivers/win');
-    const installerPath = path.join(driverPath, 'install-driver.bat');
+    // Open OBS download page
+    const { shell } = require('electron');
+    shell.openExternal('https://obsproject.com/download');
 
-    if (!fs.existsSync(installerPath)) {
-      return {
-        success: false,
-        message: 'Driver não encontrado. Por favor, instale o OBS Studio para obter o OBS Virtual Camera.'
-      };
-    }
-
-    return new Promise((resolve) => {
-      // Run installer with elevated privileges
-      exec(`powershell -Command "Start-Process '${installerPath}' -Verb RunAs -Wait"`, (error) => {
-        if (error) {
-          resolve({ success: false, message: 'Erro ao instalar driver: ' + error.message });
-        } else {
-          resolve({ success: true, message: 'Driver instalado com sucesso! Reinicie o aplicativo.' });
-        }
-      });
-    });
+    return {
+      success: true,
+      message: 'Abrindo página de download do OBS Studio. Após instalar, reinicie o Phone Webcam.'
+    };
   }
 
   /**
@@ -187,23 +236,24 @@ class VirtualCamera {
     this.fps = fps;
     this.driverName = driverId;
 
+    // For now, we'll use a simpler approach - just mark as running
+    // The actual FFmpeg pipeline for Windows DirectShow output is complex
+    // and requires the virtual camera to be in "receive" mode
+
+    // Check if driver supports direct input
+    if (this.platform === 'win32') {
+      // Windows virtual cameras typically don't support direct FFmpeg output
+      // They work by the application sending frames via their SDK
+      // For OBS Virtual Camera, you need OBS running with Virtual Camera active
+      return {
+        success: false,
+        message: 'No Windows, abra o OBS Studio e ative "Iniciar Câmera Virtual" no menu Ferramentas. Depois use o método "Janela Limpa" para capturar.'
+      };
+    }
+
     let ffmpegArgs;
 
-    if (this.platform === 'win32') {
-      // Windows - output to DirectShow virtual camera
-      const deviceName = this.getWindowsDeviceName(driverId);
-      ffmpegArgs = [
-        '-f', 'rawvideo',
-        '-pix_fmt', 'bgra',
-        '-s', `${width}x${height}`,
-        '-r', String(fps),
-        '-i', 'pipe:0',
-        '-f', 'dshow',
-        '-vcodec', 'rawvideo',
-        '-pix_fmt', 'yuyv422',
-        `video=${deviceName}`
-      ];
-    } else if (this.platform === 'linux') {
+    if (this.platform === 'linux') {
       // Linux - output to v4l2loopback device
       const device = driverId.device || '/dev/video10';
       ffmpegArgs = [
@@ -218,12 +268,11 @@ class VirtualCamera {
       ];
     } else if (this.platform === 'darwin') {
       // macOS - OBS Virtual Camera uses different approach
-      // For now, return not supported
       return { success: false, message: 'macOS virtual camera requer OBS Studio rodando' };
     }
 
     try {
-      this.ffmpegProcess = spawn(ffmpegPath, ffmpegArgs, {
+      this.ffmpegProcess = spawn(ffmpegPath.replace(/"/g, ''), ffmpegArgs, {
         stdio: ['pipe', 'pipe', 'pipe']
       });
 
@@ -233,7 +282,6 @@ class VirtualCamera {
       });
 
       this.ffmpegProcess.stderr.on('data', (data) => {
-        // Log FFmpeg output for debugging
         console.log('FFmpeg:', data.toString());
       });
 
@@ -286,17 +334,12 @@ class VirtualCamera {
    */
   async sendJpegFrame(jpegBuffer) {
     // For JPEG input, we need a different FFmpeg pipeline
-    // This is less efficient but more compatible
     if (!this.jpegProcess) {
       await this.startJpegPipeline();
     }
 
     if (this.jpegProcess && this.jpegProcess.stdin.writable) {
       try {
-        // Write JPEG with frame delimiter
-        const header = Buffer.alloc(8);
-        header.writeUInt32BE(jpegBuffer.length, 0);
-        this.jpegProcess.stdin.write(header);
         this.jpegProcess.stdin.write(jpegBuffer);
         return true;
       } catch (error) {
@@ -318,18 +361,7 @@ class VirtualCamera {
     const driver = drivers[0];
     let ffmpegArgs;
 
-    if (this.platform === 'win32') {
-      const deviceName = this.getWindowsDeviceName(driver.id);
-      ffmpegArgs = [
-        '-f', 'mjpeg',
-        '-i', 'pipe:0',
-        '-f', 'dshow',
-        '-vcodec', 'rawvideo',
-        '-pix_fmt', 'yuyv422',
-        '-s', `${this.width}x${this.height}`,
-        `video=${deviceName}`
-      ];
-    } else if (this.platform === 'linux') {
+    if (this.platform === 'linux') {
       const device = driver.device || '/dev/video10';
       ffmpegArgs = [
         '-f', 'mjpeg',
@@ -339,19 +371,19 @@ class VirtualCamera {
         '-s', `${this.width}x${this.height}`,
         device
       ];
-    } else {
-      return false;
+
+      this.jpegProcess = spawn(ffmpegPath.replace(/"/g, ''), ffmpegArgs, {
+        stdio: ['pipe', 'pipe', 'pipe']
+      });
+
+      this.jpegProcess.on('error', (err) => {
+        console.error('FFmpeg JPEG error:', err);
+      });
+
+      return true;
     }
 
-    this.jpegProcess = spawn(ffmpegPath, ffmpegArgs, {
-      stdio: ['pipe', 'pipe', 'pipe']
-    });
-
-    this.jpegProcess.on('error', (err) => {
-      console.error('FFmpeg JPEG error:', err);
-    });
-
-    return true;
+    return false;
   }
 
   /**

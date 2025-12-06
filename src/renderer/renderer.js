@@ -450,16 +450,17 @@ async function detectVcamDrivers() {
       vcamStatusText.textContent = 'Nenhum driver encontrado';
       vcamStatusDot.classList.add('error');
       btnVcamToggle.disabled = true;
+      btnVcamToggle.style.display = 'none';
       btnVcamInstall.style.display = 'block';
 
       vcamHint.innerHTML = `
         <p><strong>Driver necessário!</strong></p>
-        <p>Instale o OBS Studio para obter o OBS Virtual Camera, ou clique em "Instalar Driver".</p>
+        <p>Instale o <a href="#" onclick="window.electronAPI.vcamInstallDriver()">OBS Studio</a> para obter o OBS Virtual Camera.</p>
+        <p style="margin-top: 10px; color: var(--warning);">⚠️ No Windows, use o método "Janela Limpa" abaixo enquanto isso.</p>
       `;
     } else {
-      vcamStatusText.textContent = `${vcamDriversList.length} driver(s) disponível(is)`;
+      vcamStatusText.textContent = `${vcamDriversList.length} driver(s) encontrado(s)`;
       vcamStatusDot.classList.add('active');
-      btnVcamToggle.disabled = false;
       btnVcamInstall.style.display = 'none';
 
       // Display available drivers
@@ -469,7 +470,7 @@ async function detectVcamDrivers() {
         driverItem.innerHTML = `
           <span class="vcam-driver-icon">📹</span>
           <span class="vcam-driver-name">${driver.name}</span>
-          <span class="vcam-driver-status">Instalado</span>
+          <span class="vcam-driver-status">✓</span>
         `;
         driverItem.addEventListener('click', () => selectDriver(driver, driverItem));
         vcamDrivers.appendChild(driverItem);
@@ -478,12 +479,37 @@ async function detectVcamDrivers() {
       // Select first driver by default
       selectedDriver = vcamDriversList[0];
 
-      vcamHint.innerHTML = `<p>Clique em "Iniciar Webcam Virtual" para usar a câmera do celular em qualquer aplicativo!</p>`;
+      // Check platform for instructions
+      const isWindows = navigator.platform.toLowerCase().includes('win');
+
+      if (isWindows) {
+        btnVcamToggle.style.display = 'none';
+        vcamHint.innerHTML = `
+          <p><strong>✅ OBS Virtual Camera detectado!</strong></p>
+          <p style="margin-top: 8px;">Para usar como webcam no Zoom, Meet, etc:</p>
+          <ol style="margin-top: 8px; padding-left: 20px; line-height: 1.8;">
+            <li>Abra o OBS Studio</li>
+            <li>Vá em <strong>Ferramentas → Iniciar Câmera Virtual</strong></li>
+            <li>Clique em <strong>"Janela Limpa"</strong> abaixo</li>
+            <li>No OBS, adicione <strong>Captura de Janela</strong></li>
+            <li>Selecione a janela "Phone Webcam - Clean Output"</li>
+            <li>Em outros apps, selecione "OBS Virtual Camera"</li>
+          </ol>
+        `;
+      } else {
+        btnVcamToggle.style.display = 'block';
+        btnVcamToggle.disabled = false;
+        vcamHint.innerHTML = `<p>Clique em "Iniciar Webcam Virtual" para usar a câmera do celular em qualquer aplicativo!</p>`;
+      }
     }
   } catch (error) {
     console.error('Error detecting vcam drivers:', error);
     vcamStatusText.textContent = 'Erro ao verificar drivers';
     vcamStatusDot.classList.add('error');
+
+    vcamHint.innerHTML = `
+      <p style="color: var(--warning);">⚠️ Use o método "Janela Limpa" abaixo para capturar com OBS.</p>
+    `;
   }
 }
 
