@@ -23,15 +23,38 @@ const WS_PORT = 8444;
 // Certificate storage path
 const certsPath = path.join(app.getPath('userData'), 'certs');
 
-// Get local IP address
-function getLocalIP() {
+// Selected IP for connection
+let selectedIP = null;
+
+// Get all local IP addresses
+function getAllLocalIPs() {
   const interfaces = os.networkInterfaces();
+  const ips = [];
+
   for (const name of Object.keys(interfaces)) {
     for (const iface of interfaces[name]) {
       if (iface.family === 'IPv4' && !iface.internal) {
-        return iface.address;
+        ips.push({
+          name: name,
+          address: iface.address,
+          netmask: iface.netmask
+        });
       }
     }
+  }
+
+  return ips;
+}
+
+// Get local IP address (use selected or first available)
+function getLocalIP() {
+  if (selectedIP) {
+    return selectedIP;
+  }
+
+  const ips = getAllLocalIPs();
+  if (ips.length > 0) {
+    return ips[0].address;
   }
   return '127.0.0.1';
 }
@@ -258,9 +281,30 @@ ipcMain.handle('get-server-status', () => {
     wsRunning: !!wss,
     connectedClients: connectedClients.size,
     localIP: getLocalIP(),
+    allIPs: getAllLocalIPs(),
     httpsPort: HTTPS_PORT,
     wsPort: WS_PORT
   };
+});
+
+// Change selected IP and regenerate QR code
+ipcMain.handle('select-ip', async (event, ip) => {
+  selectedIP = ip;
+  console.log(`Selected IP changed to: ${ip}`);
+
+  // Delete old certificates to regenerate with new IP
+  const certFile = path.join(certsPath, 'cert.pem');
+  const keyFile = path.join(certsPath, 'key.pem');
+
+  try {
+    if (fs.existsSync(certFile)) fs.unlinkSync(certFile);
+    if (fs.existsSync(keyFile)) fs.unlinkSync(keyFile);
+    console.log('Old certificates deleted, will regenerate on restart');
+  } catch (e) {
+    console.error('Error deleting certificates:', e);
+  }
+
+  return await generateQRCode();
 });
 
 // Send command to connected mobile clients

@@ -8,6 +8,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // Get server status
   getServerStatus: () => ipcRenderer.invoke('get-server-status'),
 
+  // Select IP address for connection
+  selectIP: (ip) => ipcRenderer.invoke('select-ip', ip),
+
   // Send command to mobile device
   sendToMobile: (data) => ipcRenderer.send('send-to-mobile', data),
 

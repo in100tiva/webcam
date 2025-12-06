@@ -55,6 +55,17 @@
         </div>
 
         <div class="panel-section">
+          <h3>Rede</h3>
+          <div class="network-select">
+            <label>Interface:</label>
+            <select id="networkSelect">
+              <option value="">Carregando...</option>
+            </select>
+          </div>
+          <p class="network-hint" id="networkHint">Escolha a mesma rede do celular</p>
+        </div>
+
+        <div class="panel-section">
           <h3>Conexão Manual</h3>
           <div class="connection-info">
             <div class="info-row">
@@ -63,10 +74,6 @@
                 <span id="connectionUrl">-</span>
                 <button class="copy-btn" onclick="copyToClipboard('connectionUrl')">📋</button>
               </div>
-            </div>
-            <div class="info-row">
-              <label>IP:</label>
-              <span id="serverIP">-</span>
             </div>
             <div class="info-row">
               <label>Porta HTTPS:</label>
