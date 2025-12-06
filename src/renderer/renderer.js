@@ -19,9 +19,12 @@ const networkHint = document.getElementById('networkHint');
 const btnFullscreen = document.getElementById('btnFullscreen');
 const btnSnapshot = document.getElementById('btnSnapshot');
 const btnMirror = document.getElementById('btnMirror');
+const btnRotate = document.getElementById('btnRotate');
 const btnSwitchCamera = document.getElementById('btnSwitchCamera');
 const btnToggleFlash = document.getElementById('btnToggleFlash');
 const qualitySelect = document.getElementById('qualitySelect');
+const aspectSelect = document.getElementById('aspectSelect');
+const rotationSelect = document.getElementById('rotationSelect');
 const btnOpenCleanWindow = document.getElementById('btnOpenCleanWindow');
 
 // State
@@ -30,6 +33,7 @@ let lastFPSUpdate = Date.now();
 let isMirrored = false;
 let isConnected = false;
 let allNetworkIPs = [];
+let currentRotation = 0;
 
 // Populate network selector
 async function populateNetworkSelect() {
@@ -273,6 +277,46 @@ function toggleMirror() {
   showToast(isMirrored ? 'Espelhado' : 'Normal');
 }
 
+// Rotate video 90 degrees
+function rotateVideo() {
+  currentRotation = (currentRotation + 90) % 360;
+  updateVideoTransform();
+  rotationSelect.value = currentRotation.toString();
+  showToast(`Rotação: ${currentRotation}°`);
+}
+
+// Set rotation from select
+function setRotation(degrees) {
+  currentRotation = parseInt(degrees);
+  updateVideoTransform();
+}
+
+// Set aspect ratio
+function setAspectRatio(ratio) {
+  // Remove all aspect ratio classes
+  videoContainer.classList.remove('aspect-16-9', 'aspect-4-3', 'aspect-1-1', 'aspect-9-16');
+
+  if (ratio !== 'auto') {
+    videoContainer.classList.add(`aspect-${ratio}`);
+  }
+
+  showToast(`Proporção: ${ratio === 'auto' ? 'Automático' : ratio.replace('-', ':')}`);
+}
+
+// Update video transform based on mirror and rotation
+function updateVideoTransform() {
+  // Remove all rotation classes
+  videoPreview.classList.remove('rotate-90', 'rotate-180', 'rotate-270');
+
+  if (currentRotation === 90) {
+    videoPreview.classList.add('rotate-90');
+  } else if (currentRotation === 180) {
+    videoPreview.classList.add('rotate-180');
+  } else if (currentRotation === 270) {
+    videoPreview.classList.add('rotate-270');
+  }
+}
+
 // Send command to mobile
 function sendToMobile(command, data = {}) {
   window.electronAPI.sendToMobile({
@@ -285,6 +329,17 @@ function sendToMobile(command, data = {}) {
 btnFullscreen.addEventListener('click', toggleFullscreen);
 btnSnapshot.addEventListener('click', takeSnapshot);
 btnMirror.addEventListener('click', toggleMirror);
+btnRotate.addEventListener('click', rotateVideo);
+
+// Aspect ratio and rotation selects
+aspectSelect.addEventListener('change', (e) => {
+  setAspectRatio(e.target.value);
+});
+
+rotationSelect.addEventListener('change', (e) => {
+  setRotation(e.target.value);
+  showToast(`Rotação: ${e.target.value}°`);
+});
 
 btnSwitchCamera.addEventListener('click', () => {
   sendToMobile('switchCamera');
@@ -337,6 +392,10 @@ document.addEventListener('keydown', (e) => {
     case 'm':
     case 'M':
       toggleMirror();
+      break;
+    case 'r':
+    case 'R':
+      rotateVideo();
       break;
   }
 });
