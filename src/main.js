@@ -251,14 +251,17 @@ function createWindow() {
     },
     icon: path.join(__dirname, 'assets', 'icon.png'),
     title: 'Phone Webcam',
-    backgroundColor: '#1a1a2e'
+    backgroundColor: '#0a0a0f'
   });
 
-  mainWindow.loadFile(path.join(__dirname, 'renderer', 'index.html'));
-
-  // Open DevTools in development
-  if (process.argv.includes('--dev')) {
+  // Load the React app - either from dev server or built files
+  if (process.argv.includes('--dev') || process.env.NODE_ENV === 'development') {
+    // Development mode - load from Vite dev server
+    mainWindow.loadURL('http://localhost:5173');
     mainWindow.webContents.openDevTools();
+  } else {
+    // Production mode - load built files
+    mainWindow.loadFile(path.join(__dirname, '..', 'dist-react', 'index.html'));
   }
 
   mainWindow.on('closed', () => {
