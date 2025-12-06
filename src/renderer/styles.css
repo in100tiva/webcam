@@ -323,6 +323,41 @@ body {
   line-height: 1.4;
 }
 
+/* Network select */
+.network-select {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.network-select label {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+}
+
+.network-select select {
+  width: 100%;
+  padding: 10px 12px;
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+  border: 2px solid transparent;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: border-color 0.3s;
+}
+
+.network-select select:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.network-hint {
+  margin-top: 8px;
+  font-size: 0.8rem;
+  color: var(--success);
+}
+
 /* Footer */
 .footer {
   text-align: center;

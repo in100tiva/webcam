@@ -6,13 +6,14 @@ const statusIndicator = document.getElementById('statusIndicator');
 const statusText = statusIndicator.querySelector('.status-text');
 const qrCode = document.getElementById('qrCode');
 const connectionUrl = document.getElementById('connectionUrl');
-const serverIP = document.getElementById('serverIP');
 const httpsPort = document.getElementById('httpsPort');
 const wsPort = document.getElementById('wsPort');
 const connectedDevices = document.getElementById('connectedDevices');
 const currentFPS = document.getElementById('currentFPS');
 const resolution = document.getElementById('resolution');
 const snapshotCanvas = document.getElementById('snapshotCanvas');
+const networkSelect = document.getElementById('networkSelect');
+const networkHint = document.getElementById('networkHint');
 
 // Control buttons
 const btnFullscreen = document.getElementById('btnFullscreen');
@@ -27,10 +28,97 @@ let frameCount = 0;
 let lastFPSUpdate = Date.now();
 let isMirrored = false;
 let isConnected = false;
+let allNetworkIPs = [];
+
+// Populate network selector
+async function populateNetworkSelect() {
+  try {
+    const status = await window.electronAPI.getServerStatus();
+    allNetworkIPs = status.allIPs || [];
+
+    networkSelect.innerHTML = '';
+
+    if (allNetworkIPs.length === 0) {
+      networkSelect.innerHTML = '<option value="">Nenhuma rede encontrada</option>';
+      networkHint.textContent = 'Verifique sua conexao de rede';
+      networkHint.style.color = 'var(--error)';
+      return;
+    }
+
+    allNetworkIPs.forEach((net, index) => {
+      const option = document.createElement('option');
+      option.value = net.address;
+      option.textContent = `${net.name} - ${net.address}`;
+      if (net.address === status.localIP) {
+        option.selected = true;
+      }
+      networkSelect.appendChild(option);
+    });
+
+    // Show hint based on network type
+    updateNetworkHint();
+
+  } catch (error) {
+    console.error('Error populating network select:', error);
+    networkSelect.innerHTML = '<option value="">Erro ao carregar</option>';
+  }
+}
+
+// Update network hint based on selected interface
+function updateNetworkHint() {
+  const selectedIP = networkSelect.value;
+  const selectedNet = allNetworkIPs.find(n => n.address === selectedIP);
+
+  if (selectedNet) {
+    const name = selectedNet.name.toLowerCase();
+    if (name.includes('wi-fi') || name.includes('wifi') || name.includes('wlan') || name.includes('wireless')) {
+      networkHint.textContent = 'WiFi selecionado - ideal para celular no WiFi';
+      networkHint.style.color = 'var(--success)';
+    } else if (name.includes('eth') || name.includes('ethernet') || name.includes('enp') || name.includes('eno')) {
+      networkHint.textContent = 'Ethernet selecionado - celular deve estar na mesma rede';
+      networkHint.style.color = 'var(--warning)';
+    } else {
+      networkHint.textContent = 'Certifique-se que o celular esta na mesma rede';
+      networkHint.style.color = 'var(--text-secondary)';
+    }
+  }
+}
+
+// Handle network selection change
+async function handleNetworkChange() {
+  const selectedIP = networkSelect.value;
+
+  if (!selectedIP) return;
+
+  showToast('Alterando rede...');
+  updateNetworkHint();
+
+  try {
+    const newInfo = await window.electronAPI.selectIP(selectedIP);
+
+    if (newInfo.qrDataUrl) {
+      qrCode.src = newInfo.qrDataUrl;
+    }
+    connectionUrl.textContent = newInfo.url;
+
+    showToast(`IP alterado para ${selectedIP}`);
+
+    // Show restart hint
+    networkHint.innerHTML = `<strong>Reinicie o app</strong> para aplicar o novo certificado SSL`;
+    networkHint.style.color = 'var(--accent)';
+
+  } catch (error) {
+    console.error('Error changing IP:', error);
+    showToast('Erro ao alterar IP');
+  }
+}
 
 // Initialize connection info
 async function initConnectionInfo() {
   try {
+    // First populate network selector
+    await populateNetworkSelect();
+
     const info = await window.electronAPI.getConnectionInfo();
 
     if (info.qrDataUrl) {
@@ -38,7 +126,6 @@ async function initConnectionInfo() {
     }
 
     connectionUrl.textContent = info.url;
-    serverIP.textContent = info.ip;
 
     const status = await window.electronAPI.getServerStatus();
     httpsPort.textContent = status.httpsPort;
@@ -211,6 +298,9 @@ qualitySelect.addEventListener('change', (e) => {
   sendToMobile('setQuality', { quality: e.target.value });
   showToast(`Qualidade: ${e.target.options[e.target.selectedIndex].text}`);
 });
+
+// Network selection
+networkSelect.addEventListener('change', handleNetworkChange);
 
 // Keyboard shortcuts
 document.addEventListener('keydown', (e) => {
