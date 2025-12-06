@@ -11,6 +11,14 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // Select IP address for connection
   selectIP: (ip) => ipcRenderer.invoke('select-ip', ip),
 
+  // Clean output window for OBS capture
+  openCleanWindow: () => ipcRenderer.invoke('open-clean-window'),
+  closeCleanWindow: () => ipcRenderer.invoke('close-clean-window'),
+  isCleanWindowOpen: () => ipcRenderer.invoke('is-clean-window-open'),
+  onCleanWindowClosed: (callback) => {
+    ipcRenderer.on('clean-window-closed', () => callback());
+  },
+
   // Send command to mobile device
   sendToMobile: (data) => ipcRenderer.send('send-to-mobile', data),
 

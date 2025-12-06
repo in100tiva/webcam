@@ -22,6 +22,7 @@ const btnMirror = document.getElementById('btnMirror');
 const btnSwitchCamera = document.getElementById('btnSwitchCamera');
 const btnToggleFlash = document.getElementById('btnToggleFlash');
 const qualitySelect = document.getElementById('qualitySelect');
+const btnOpenCleanWindow = document.getElementById('btnOpenCleanWindow');
 
 // State
 let frameCount = 0;
@@ -301,6 +302,26 @@ qualitySelect.addEventListener('change', (e) => {
 
 // Network selection
 networkSelect.addEventListener('change', handleNetworkChange);
+
+// Virtual Webcam / Clean window
+btnOpenCleanWindow.addEventListener('click', async () => {
+  const isOpen = await window.electronAPI.isCleanWindowOpen();
+
+  if (isOpen) {
+    await window.electronAPI.closeCleanWindow();
+    btnOpenCleanWindow.textContent = '🎥 Abrir Janela Limpa';
+    showToast('Janela limpa fechada');
+  } else {
+    await window.electronAPI.openCleanWindow();
+    btnOpenCleanWindow.textContent = '❌ Fechar Janela Limpa';
+    showToast('Janela limpa aberta - capture com OBS');
+  }
+});
+
+// Listen for clean window closed event
+window.electronAPI.onCleanWindowClosed(() => {
+  btnOpenCleanWindow.textContent = '🎥 Abrir Janela Limpa';
+});
 
 // Keyboard shortcuts
 document.addEventListener('keydown', (e) => {

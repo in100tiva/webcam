@@ -10,6 +10,7 @@ const QRCode = require('qrcode');
 const selfsigned = require('selfsigned');
 
 let mainWindow;
+let cleanWindow; // Clean output window for OBS capture
 let expressApp;
 let httpsServer;
 let httpServer;
@@ -189,14 +190,23 @@ function createWebSocketServer() {
       if (mainWindow && !mainWindow.isDestroyed()) {
         // Check if it's binary data (video frame) or text (control message)
         if (Buffer.isBuffer(data)) {
-          mainWindow.webContents.send('video-frame', data.toString('base64'));
+          const frameData = data.toString('base64');
+          mainWindow.webContents.send('video-frame', frameData);
+          // Also send to clean window if open
+          if (cleanWindow && !cleanWindow.isDestroyed()) {
+            cleanWindow.webContents.send('video-frame', frameData);
+          }
         } else {
           try {
             const message = JSON.parse(data.toString());
             mainWindow.webContents.send('control-message', message);
           } catch (e) {
             // If not JSON, treat as video data
-            mainWindow.webContents.send('video-frame', data.toString());
+            const frameData = data.toString();
+            mainWindow.webContents.send('video-frame', frameData);
+            if (cleanWindow && !cleanWindow.isDestroyed()) {
+              cleanWindow.webContents.send('video-frame', frameData);
+            }
           }
         }
       }
@@ -249,6 +259,43 @@ function createWindow() {
 
   mainWindow.on('closed', () => {
     mainWindow = null;
+    // Close clean window if main window is closed
+    if (cleanWindow && !cleanWindow.isDestroyed()) {
+      cleanWindow.close();
+    }
+  });
+}
+
+// Create clean output window for OBS/virtual webcam capture
+function createCleanWindow() {
+  if (cleanWindow && !cleanWindow.isDestroyed()) {
+    cleanWindow.focus();
+    return;
+  }
+
+  cleanWindow = new BrowserWindow({
+    width: 1280,
+    height: 720,
+    minWidth: 320,
+    minHeight: 240,
+    webPreferences: {
+      nodeIntegration: false,
+      contextIsolation: true,
+      preload: path.join(__dirname, 'preload.js')
+    },
+    title: 'Phone Webcam - Clean Output (Capture this window)',
+    backgroundColor: '#000000',
+    autoHideMenuBar: true
+  });
+
+  cleanWindow.loadFile(path.join(__dirname, 'renderer', 'clean.html'));
+
+  cleanWindow.on('closed', () => {
+    cleanWindow = null;
+    // Notify main window
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('clean-window-closed');
+    }
   });
 }
 
@@ -318,6 +365,25 @@ ipcMain.on('send-to-mobile', (event, data) => {
       client.send(message);
     }
   });
+});
+
+// Open clean output window for OBS capture
+ipcMain.handle('open-clean-window', () => {
+  createCleanWindow();
+  return true;
+});
+
+// Close clean output window
+ipcMain.handle('close-clean-window', () => {
+  if (cleanWindow && !cleanWindow.isDestroyed()) {
+    cleanWindow.close();
+  }
+  return true;
+});
+
+// Check if clean window is open
+ipcMain.handle('is-clean-window-open', () => {
+  return cleanWindow && !cleanWindow.isDestroyed();
 });
 
 // App lifecycle
