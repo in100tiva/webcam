@@ -13,6 +13,7 @@ let mainWindow;
 let expressApp;
 let httpsServer;
 let httpServer;
+let wssServer; // HTTPS server for WebSocket
 let wss;
 let connectedClients = new Set();
 
@@ -160,10 +161,14 @@ function createExpressServer() {
 function createWebSocketServer() {
   const sslOptions = getSSLCertificates();
 
-  wss = new WebSocket.Server({
-    port: WS_PORT,
-    host: '0.0.0.0',
-    ...sslOptions
+  // Create a dedicated HTTPS server for WebSocket
+  wssServer = https.createServer(sslOptions);
+
+  // Create WebSocket server attached to the HTTPS server
+  wss = new WebSocket.Server({ server: wssServer });
+
+  wssServer.listen(WS_PORT, '0.0.0.0', () => {
+    console.log(`WebSocket Server (WSS) running on port ${WS_PORT}`);
   });
 
   wss.on('connection', (ws, req) => {
@@ -214,8 +219,6 @@ function createWebSocketServer() {
       connectedClients.delete(ws);
     });
   });
-
-  console.log(`WebSocket Server (WSS) running on port ${WS_PORT}`);
 }
 
 // Create the main application window
@@ -346,5 +349,8 @@ app.on('before-quit', () => {
   }
   if (wss) {
     wss.close();
+  }
+  if (wssServer) {
+    wssServer.close();
   }
 });
