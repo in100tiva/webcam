@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Phone Webcam</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="container">
+    <!-- Header -->
+    <header class="header">
+      <h1>📱 Phone Webcam</h1>
+      <div class="status-indicator" id="statusIndicator">
+        <span class="status-dot"></span>
+        <span class="status-text">Aguardando conexão...</span>
+      </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="main-content">
+      <!-- Video Preview Section -->
+      <section class="video-section">
+        <div class="video-container" id="videoContainer">
+          <img id="videoPreview" class="video-preview hidden" alt="Camera Preview">
+          <div class="no-video" id="noVideo">
+            <div class="no-video-icon">📷</div>
+            <p>Nenhuma câmera conectada</p>
+            <p class="hint">Escaneie o QR code com seu celular</p>
+          </div>
+        </div>
+
+        <!-- Video Controls -->
+        <div class="video-controls">
+          <button id="btnFullscreen" class="control-btn" title="Tela cheia">
+            <span>⛶</span>
+          </button>
+          <button id="btnSnapshot" class="control-btn" title="Capturar foto">
+            <span>📸</span>
+          </button>
+          <button id="btnMirror" class="control-btn" title="Espelhar">
+            <span>↔️</span>
+          </button>
+        </div>
+      </section>
+
+      <!-- Connection Panel -->
+      <aside class="connection-panel">
+        <div class="panel-section">
+          <h2>Conectar Celular</h2>
+          <div class="qr-container">
+            <img id="qrCode" class="qr-code" alt="QR Code">
+            <p class="qr-hint">Escaneie com a câmera do celular</p>
+          </div>
+        </div>
+
+        <div class="panel-section">
+          <h3>Conexão Manual</h3>
+          <div class="connection-info">
+            <div class="info-row">
+              <label>URL:</label>
+              <div class="copyable" id="urlInfo">
+                <span id="connectionUrl">-</span>
+                <button class="copy-btn" onclick="copyToClipboard('connectionUrl')">📋</button>
+              </div>
+            </div>
+            <div class="info-row">
+              <label>IP:</label>
+              <span id="serverIP">-</span>
+            </div>
+            <div class="info-row">
+              <label>Porta HTTP:</label>
+              <span id="httpPort">-</span>
+            </div>
+            <div class="info-row">
+              <label>Porta WS:</label>
+              <span id="wsPort">-</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel-section">
+          <h3>Status</h3>
+          <div class="status-info">
+            <div class="info-row">
+              <label>Dispositivos:</label>
+              <span id="connectedDevices">0</span>
+            </div>
+            <div class="info-row">
+              <label>FPS:</label>
+              <span id="currentFPS">0</span>
+            </div>
+            <div class="info-row">
+              <label>Resolução:</label>
+              <span id="resolution">-</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Camera Controls to send to mobile -->
+        <div class="panel-section">
+          <h3>Controles da Câmera</h3>
+          <div class="camera-controls">
+            <button id="btnSwitchCamera" class="action-btn">
+              🔄 Trocar Câmera
+            </button>
+            <button id="btnToggleFlash" class="action-btn">
+              ⚡ Flash
+            </button>
+          </div>
+          <div class="quality-control">
+            <label>Qualidade:</label>
+            <select id="qualitySelect">
+              <option value="low">Baixa (480p)</option>
+              <option value="medium" selected>Média (720p)</option>
+              <option value="high">Alta (1080p)</option>
+            </select>
+          </div>
+        </div>
+      </aside>
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+      <p>Certifique-se de que o celular e o PC estão na mesma rede WiFi</p>
+    </footer>
+  </div>
+
+  <!-- Hidden canvas for snapshots -->
+  <canvas id="snapshotCanvas" style="display: none;"></canvas>
+
+  <script src="renderer.js"></script>
+</body>
+</html>

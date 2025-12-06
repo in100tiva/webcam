@@ -1,0 +1,691 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <title>Phone Webcam - Camera</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    :root {
+      --bg-primary: #1a1a2e;
+      --bg-secondary: #16213e;
+      --accent: #e94560;
+      --text-primary: #ffffff;
+      --text-secondary: #a0a0a0;
+      --success: #4ade80;
+      --warning: #fbbf24;
+      --error: #ef4444;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      min-height: 100vh;
+      overflow: hidden;
+      touch-action: none;
+    }
+
+    .container {
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      height: 100dvh;
+    }
+
+    /* Header */
+    .header {
+      padding: 12px 16px;
+      background: var(--bg-secondary);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      z-index: 10;
+    }
+
+    .header h1 {
+      font-size: 1rem;
+      font-weight: 600;
+    }
+
+    .connection-status {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.85rem;
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--warning);
+    }
+
+    .status-dot.connected {
+      background: var(--success);
+    }
+
+    .status-dot.error {
+      background: var(--error);
+    }
+
+    /* Video Area */
+    .video-area {
+      flex: 1;
+      position: relative;
+      background: #000;
+      overflow: hidden;
+    }
+
+    #cameraPreview {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .video-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(0, 0, 0, 0.8);
+    }
+
+    .video-overlay.hidden {
+      display: none;
+    }
+
+    .overlay-content {
+      text-align: center;
+      padding: 20px;
+    }
+
+    .overlay-icon {
+      font-size: 3rem;
+      margin-bottom: 15px;
+    }
+
+    .overlay-text {
+      font-size: 1.1rem;
+      margin-bottom: 10px;
+    }
+
+    .overlay-hint {
+      font-size: 0.9rem;
+      color: var(--text-secondary);
+    }
+
+    /* Permission button */
+    .permission-btn {
+      margin-top: 20px;
+      padding: 14px 28px;
+      background: var(--accent);
+      color: white;
+      border: none;
+      border-radius: 25px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: transform 0.2s, background 0.2s;
+    }
+
+    .permission-btn:active {
+      transform: scale(0.95);
+      background: #ff6b6b;
+    }
+
+    /* Controls */
+    .controls {
+      padding: 20px;
+      background: var(--bg-secondary);
+      display: flex;
+      justify-content: center;
+      gap: 20px;
+      z-index: 10;
+    }
+
+    .control-btn {
+      width: 60px;
+      height: 60px;
+      border: none;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      border-radius: 50%;
+      font-size: 1.5rem;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .control-btn:active {
+      transform: scale(0.9);
+      background: var(--accent);
+    }
+
+    .control-btn.active {
+      background: var(--accent);
+    }
+
+    .control-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    /* Stats bar */
+    .stats-bar {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      padding: 8px 16px;
+      background: linear-gradient(transparent, rgba(0,0,0,0.7));
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.75rem;
+      color: var(--text-secondary);
+    }
+
+    /* Toast */
+    .toast {
+      position: fixed;
+      top: 80px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: var(--bg-secondary);
+      color: var(--text-primary);
+      padding: 10px 20px;
+      border-radius: 20px;
+      font-size: 0.9rem;
+      z-index: 100;
+      animation: fadeInOut 2s ease;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+    }
+
+    @keyframes fadeInOut {
+      0% { opacity: 0; transform: translateX(-50%) translateY(-10px); }
+      15% { opacity: 1; transform: translateX(-50%) translateY(0); }
+      85% { opacity: 1; transform: translateX(-50%) translateY(0); }
+      100% { opacity: 0; transform: translateX(-50%) translateY(-10px); }
+    }
+
+    /* Loading spinner */
+    .spinner {
+      width: 40px;
+      height: 40px;
+      border: 3px solid var(--bg-secondary);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 15px;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    /* Landscape adjustments */
+    @media (orientation: landscape) {
+      .controls {
+        position: absolute;
+        right: 0;
+        top: 50%;
+        transform: translateY(-50%);
+        flex-direction: column;
+        padding: 15px;
+        border-radius: 20px 0 0 20px;
+      }
+
+      .header {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        background: linear-gradient(rgba(0,0,0,0.7), transparent);
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- Header -->
+    <header class="header">
+      <h1>📱 Phone Webcam</h1>
+      <div class="connection-status">
+        <span class="status-dot" id="statusDot"></span>
+        <span id="statusText">Desconectado</span>
+      </div>
+    </header>
+
+    <!-- Video Area -->
+    <div class="video-area">
+      <video id="cameraPreview" autoplay playsinline muted></video>
+
+      <!-- Overlay for permissions/errors -->
+      <div class="video-overlay" id="videoOverlay">
+        <div class="overlay-content">
+          <div class="overlay-icon" id="overlayIcon">📷</div>
+          <p class="overlay-text" id="overlayText">Acesso à câmera necessário</p>
+          <p class="overlay-hint" id="overlayHint">Toque no botão abaixo para permitir</p>
+          <button class="permission-btn" id="permissionBtn">Permitir Câmera</button>
+        </div>
+      </div>
+
+      <!-- Stats bar -->
+      <div class="stats-bar">
+        <span id="resolutionInfo">-</span>
+        <span id="fpsInfo">- FPS</span>
+      </div>
+    </div>
+
+    <!-- Controls -->
+    <div class="controls">
+      <button class="control-btn" id="btnSwitchCamera" title="Trocar câmera" disabled>
+        🔄
+      </button>
+      <button class="control-btn" id="btnToggleStream" title="Iniciar/Parar" disabled>
+        ⏺️
+      </button>
+      <button class="control-btn" id="btnFlash" title="Flash" disabled>
+        ⚡
+      </button>
+    </div>
+  </div>
+
+  <!-- Hidden canvas for frame capture -->
+  <canvas id="captureCanvas" style="display: none;"></canvas>
+
+  <script>
+    // Elements
+    const cameraPreview = document.getElementById('cameraPreview');
+    const videoOverlay = document.getElementById('videoOverlay');
+    const overlayIcon = document.getElementById('overlayIcon');
+    const overlayText = document.getElementById('overlayText');
+    const overlayHint = document.getElementById('overlayHint');
+    const permissionBtn = document.getElementById('permissionBtn');
+    const statusDot = document.getElementById('statusDot');
+    const statusText = document.getElementById('statusText');
+    const resolutionInfo = document.getElementById('resolutionInfo');
+    const fpsInfo = document.getElementById('fpsInfo');
+    const captureCanvas = document.getElementById('captureCanvas');
+    const btnSwitchCamera = document.getElementById('btnSwitchCamera');
+    const btnToggleStream = document.getElementById('btnToggleStream');
+    const btnFlash = document.getElementById('btnFlash');
+
+    // State
+    let ws = null;
+    let mediaStream = null;
+    let isStreaming = false;
+    let currentFacingMode = 'environment'; // 'environment' = back, 'user' = front
+    let frameInterval = null;
+    let frameCount = 0;
+    let lastFPSUpdate = Date.now();
+    let flashEnabled = false;
+
+    // Quality settings
+    const qualitySettings = {
+      low: { width: 640, height: 480, quality: 0.5, fps: 15 },
+      medium: { width: 1280, height: 720, quality: 0.7, fps: 24 },
+      high: { width: 1920, height: 1080, quality: 0.85, fps: 30 }
+    };
+    let currentQuality = 'medium';
+
+    // Get WebSocket URL from server
+    async function getConfig() {
+      try {
+        const response = await fetch('/api/config');
+        return await response.json();
+      } catch (error) {
+        console.error('Error getting config:', error);
+        return null;
+      }
+    }
+
+    // Connect to WebSocket server
+    async function connectWebSocket() {
+      const config = await getConfig();
+      if (!config) {
+        showOverlay('error', '❌', 'Erro de conexão', 'Não foi possível conectar ao servidor');
+        return;
+      }
+
+      updateStatus('connecting');
+
+      ws = new WebSocket(config.wsUrl);
+
+      ws.onopen = () => {
+        console.log('WebSocket connected');
+        updateStatus('connected');
+        enableControls(true);
+        showToast('Conectado ao PC!');
+      };
+
+      ws.onclose = () => {
+        console.log('WebSocket disconnected');
+        updateStatus('disconnected');
+        enableControls(false);
+        stopStreaming();
+
+        // Try to reconnect after 3 seconds
+        setTimeout(connectWebSocket, 3000);
+      };
+
+      ws.onerror = (error) => {
+        console.error('WebSocket error:', error);
+        updateStatus('error');
+      };
+
+      ws.onmessage = (event) => {
+        try {
+          const message = JSON.parse(event.data);
+          handleServerMessage(message);
+        } catch (e) {
+          console.error('Error parsing message:', e);
+        }
+      };
+    }
+
+    // Handle messages from PC
+    function handleServerMessage(message) {
+      switch (message.type) {
+        case 'switchCamera':
+          switchCamera();
+          break;
+        case 'toggleFlash':
+          toggleFlash();
+          break;
+        case 'setQuality':
+          setQuality(message.quality);
+          break;
+      }
+    }
+
+    // Update connection status UI
+    function updateStatus(status) {
+      statusDot.className = 'status-dot';
+
+      switch (status) {
+        case 'connected':
+          statusDot.classList.add('connected');
+          statusText.textContent = 'Conectado';
+          break;
+        case 'connecting':
+          statusText.textContent = 'Conectando...';
+          break;
+        case 'disconnected':
+          statusText.textContent = 'Desconectado';
+          break;
+        case 'error':
+          statusDot.classList.add('error');
+          statusText.textContent = 'Erro';
+          break;
+      }
+    }
+
+    // Show overlay with message
+    function showOverlay(type, icon, text, hint) {
+      overlayIcon.textContent = icon;
+      overlayText.textContent = text;
+      overlayHint.textContent = hint || '';
+      permissionBtn.style.display = type === 'permission' ? 'block' : 'none';
+      videoOverlay.classList.remove('hidden');
+    }
+
+    // Hide overlay
+    function hideOverlay() {
+      videoOverlay.classList.add('hidden');
+    }
+
+    // Show toast notification
+    function showToast(message) {
+      const toast = document.createElement('div');
+      toast.className = 'toast';
+      toast.textContent = message;
+      document.body.appendChild(toast);
+      setTimeout(() => toast.remove(), 2000);
+    }
+
+    // Enable/disable control buttons
+    function enableControls(enabled) {
+      btnSwitchCamera.disabled = !enabled;
+      btnToggleStream.disabled = !enabled;
+      btnFlash.disabled = !enabled;
+    }
+
+    // Request camera permission and start
+    async function requestCameraPermission() {
+      showOverlay('loading', '', 'Solicitando permissão...', '');
+      overlayIcon.innerHTML = '<div class="spinner"></div>';
+
+      try {
+        const settings = qualitySettings[currentQuality];
+
+        const constraints = {
+          video: {
+            facingMode: currentFacingMode,
+            width: { ideal: settings.width },
+            height: { ideal: settings.height },
+            frameRate: { ideal: settings.fps }
+          },
+          audio: false
+        };
+
+        mediaStream = await navigator.mediaDevices.getUserMedia(constraints);
+        cameraPreview.srcObject = mediaStream;
+
+        // Wait for video to be ready
+        await new Promise((resolve) => {
+          cameraPreview.onloadedmetadata = () => {
+            cameraPreview.play();
+            resolve();
+          };
+        });
+
+        // Update resolution info
+        const videoTrack = mediaStream.getVideoTracks()[0];
+        const trackSettings = videoTrack.getSettings();
+        resolutionInfo.textContent = `${trackSettings.width}x${trackSettings.height}`;
+
+        // Send resolution info to PC
+        sendMessage({
+          type: 'resolution',
+          width: trackSettings.width,
+          height: trackSettings.height
+        });
+
+        hideOverlay();
+        startStreaming();
+
+      } catch (error) {
+        console.error('Camera error:', error);
+
+        if (error.name === 'NotAllowedError') {
+          showOverlay('permission', '🚫', 'Permissão negada', 'Por favor, permita o acesso à câmera nas configurações');
+        } else if (error.name === 'NotFoundError') {
+          showOverlay('error', '📷', 'Câmera não encontrada', 'Nenhuma câmera disponível neste dispositivo');
+        } else {
+          showOverlay('error', '❌', 'Erro ao acessar câmera', error.message);
+        }
+      }
+    }
+
+    // Start streaming frames
+    function startStreaming() {
+      if (isStreaming) return;
+
+      isStreaming = true;
+      btnToggleStream.textContent = '⏹️';
+      btnToggleStream.classList.add('active');
+
+      const settings = qualitySettings[currentQuality];
+      const ctx = captureCanvas.getContext('2d');
+
+      captureCanvas.width = settings.width;
+      captureCanvas.height = settings.height;
+
+      const captureAndSend = () => {
+        if (!isStreaming || !ws || ws.readyState !== WebSocket.OPEN) return;
+
+        // Draw video frame to canvas
+        ctx.drawImage(cameraPreview, 0, 0, captureCanvas.width, captureCanvas.height);
+
+        // Convert to JPEG and send
+        captureCanvas.toBlob((blob) => {
+          if (blob && ws && ws.readyState === WebSocket.OPEN) {
+            ws.send(blob);
+            updateFPS();
+          }
+        }, 'image/jpeg', settings.quality);
+      };
+
+      // Start capture loop
+      frameInterval = setInterval(captureAndSend, 1000 / settings.fps);
+
+      showToast('Streaming iniciado');
+    }
+
+    // Stop streaming
+    function stopStreaming() {
+      isStreaming = false;
+      btnToggleStream.textContent = '⏺️';
+      btnToggleStream.classList.remove('active');
+
+      if (frameInterval) {
+        clearInterval(frameInterval);
+        frameInterval = null;
+      }
+    }
+
+    // Toggle streaming
+    function toggleStreaming() {
+      if (isStreaming) {
+        stopStreaming();
+        showToast('Streaming pausado');
+      } else {
+        if (mediaStream) {
+          startStreaming();
+        } else {
+          requestCameraPermission();
+        }
+      }
+    }
+
+    // Switch between front and back camera
+    async function switchCamera() {
+      stopStreaming();
+
+      // Stop current stream
+      if (mediaStream) {
+        mediaStream.getTracks().forEach(track => track.stop());
+      }
+
+      // Toggle facing mode
+      currentFacingMode = currentFacingMode === 'environment' ? 'user' : 'environment';
+
+      showToast(currentFacingMode === 'environment' ? 'Câmera traseira' : 'Câmera frontal');
+
+      // Request new camera
+      await requestCameraPermission();
+    }
+
+    // Toggle flash (torch)
+    async function toggleFlash() {
+      if (!mediaStream) return;
+
+      const videoTrack = mediaStream.getVideoTracks()[0];
+      const capabilities = videoTrack.getCapabilities();
+
+      if (!capabilities.torch) {
+        showToast('Flash não disponível');
+        return;
+      }
+
+      try {
+        flashEnabled = !flashEnabled;
+        await videoTrack.applyConstraints({
+          advanced: [{ torch: flashEnabled }]
+        });
+
+        btnFlash.classList.toggle('active', flashEnabled);
+        showToast(flashEnabled ? 'Flash ligado' : 'Flash desligado');
+      } catch (error) {
+        console.error('Flash error:', error);
+        showToast('Erro ao controlar flash');
+      }
+    }
+
+    // Set quality
+    function setQuality(quality) {
+      if (!qualitySettings[quality]) return;
+
+      currentQuality = quality;
+      showToast(`Qualidade: ${quality}`);
+
+      // Restart stream with new quality
+      if (isStreaming) {
+        stopStreaming();
+        requestCameraPermission();
+      }
+    }
+
+    // Send message to server
+    function sendMessage(data) {
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify(data));
+      }
+    }
+
+    // Update FPS counter
+    function updateFPS() {
+      frameCount++;
+      const now = Date.now();
+      const elapsed = now - lastFPSUpdate;
+
+      if (elapsed >= 1000) {
+        const fps = Math.round((frameCount * 1000) / elapsed);
+        fpsInfo.textContent = `${fps} FPS`;
+        frameCount = 0;
+        lastFPSUpdate = now;
+      }
+    }
+
+    // Prevent screen from sleeping
+    async function requestWakeLock() {
+      try {
+        if ('wakeLock' in navigator) {
+          await navigator.wakeLock.request('screen');
+        }
+      } catch (error) {
+        console.log('Wake lock not supported');
+      }
+    }
+
+    // Event Listeners
+    permissionBtn.addEventListener('click', requestCameraPermission);
+    btnSwitchCamera.addEventListener('click', switchCamera);
+    btnToggleStream.addEventListener('click', toggleStreaming);
+    btnFlash.addEventListener('click', toggleFlash);
+
+    // Initialize
+    async function init() {
+      await requestWakeLock();
+      await connectWebSocket();
+    }
+
+    init();
+  </script>
+</body>
+</html>
