@@ -506,27 +506,125 @@ body {
 }
 
 /* Virtual Webcam section */
-.virtual-webcam-hint {
-  font-size: 0.8rem;
-  color: var(--text-muted);
-  line-height: 1.6;
-  margin-top: 14px;
-  padding: 14px;
+.vcam-status {
+  margin-bottom: 14px;
+}
+
+.vcam-status-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
   background: var(--bg-tertiary);
   border-radius: var(--border-radius-sm);
 }
 
-.virtual-webcam-hint p {
-  margin-bottom: 10px;
-  color: var(--text-secondary);
+.vcam-status-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--warning);
+  animation: pulse 2s infinite;
 }
 
-.virtual-webcam-hint ol {
-  padding-left: 18px;
+.vcam-status-dot.active {
+  background: var(--success);
+  box-shadow: 0 0 10px var(--success);
 }
 
-.virtual-webcam-hint li {
-  margin-bottom: 6px;
+.vcam-status-dot.error {
+  background: var(--error);
+}
+
+.vcam-drivers {
+  margin-bottom: 14px;
+}
+
+.vcam-driver-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  background: var(--bg-tertiary);
+  border-radius: var(--border-radius-sm);
+  margin-bottom: 8px;
+  border: 1px solid var(--border-color);
+}
+
+.vcam-driver-item.selected {
+  border-color: var(--accent);
+  background: rgba(99, 102, 241, 0.1);
+}
+
+.vcam-driver-icon {
+  font-size: 1.2rem;
+}
+
+.vcam-driver-name {
+  flex: 1;
+  font-size: 0.9rem;
+  color: var(--text-primary);
+}
+
+.vcam-driver-status {
+  font-size: 0.75rem;
+  padding: 4px 10px;
+  border-radius: 12px;
+  background: var(--success);
+  color: white;
+}
+
+.vcam-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.vcam-btn {
+  background: linear-gradient(135deg, #10b981, #059669) !important;
+}
+
+.vcam-btn:disabled {
+  background: var(--bg-tertiary) !important;
+  opacity: 0.6;
+}
+
+.vcam-btn.running {
+  background: linear-gradient(135deg, #ef4444, #dc2626) !important;
+}
+
+.vcam-install-btn {
+  background: linear-gradient(135deg, #f59e0b, #d97706) !important;
+}
+
+.vcam-hint {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  line-height: 1.6;
+  padding: 12px;
+  background: var(--bg-tertiary);
+  border-radius: var(--border-radius-sm);
+  margin-bottom: 14px;
+}
+
+.vcam-hint p {
+  margin: 0;
+}
+
+.vcam-fallback {
+  padding-top: 14px;
+  border-top: 1px solid var(--border-color);
+}
+
+.action-btn.secondary {
+  background: var(--bg-tertiary) !important;
+  border: 1px solid var(--border-color);
+}
+
+.action-btn.secondary:hover {
+  background: var(--bg-secondary) !important;
+  border-color: var(--accent);
 }
 
 /* Footer */
