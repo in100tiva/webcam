@@ -1,19 +1,27 @@
 const { app, BrowserWindow, ipcMain, screen } = require('electron');
 const path = require('path');
+const fs = require('fs');
 const express = require('express');
+const https = require('https');
 const http = require('http');
 const WebSocket = require('ws');
 const os = require('os');
 const QRCode = require('qrcode');
+const selfsigned = require('selfsigned');
 
 let mainWindow;
 let expressApp;
+let httpsServer;
 let httpServer;
 let wss;
 let connectedClients = new Set();
 
-const PORT = 8080;
-const WS_PORT = 8081;
+const HTTPS_PORT = 8443;
+const HTTP_PORT = 8080;
+const WS_PORT = 8444;
+
+// Certificate storage path
+const certsPath = path.join(app.getPath('userData'), 'certs');
 
 // Get local IP address
 function getLocalIP() {
@@ -28,10 +36,75 @@ function getLocalIP() {
   return '127.0.0.1';
 }
 
-// Create Express server to serve mobile page
+// Generate or load SSL certificates
+function getSSLCertificates() {
+  const certFile = path.join(certsPath, 'cert.pem');
+  const keyFile = path.join(certsPath, 'key.pem');
+
+  // Check if certificates already exist
+  if (fs.existsSync(certFile) && fs.existsSync(keyFile)) {
+    console.log('Loading existing SSL certificates...');
+    return {
+      cert: fs.readFileSync(certFile),
+      key: fs.readFileSync(keyFile)
+    };
+  }
+
+  // Create certs directory if it doesn't exist
+  if (!fs.existsSync(certsPath)) {
+    fs.mkdirSync(certsPath, { recursive: true });
+  }
+
+  console.log('Generating new SSL certificates...');
+
+  const localIP = getLocalIP();
+
+  // Generate self-signed certificate
+  const attrs = [{ name: 'commonName', value: 'Phone Webcam' }];
+  const pems = selfsigned.generate(attrs, {
+    algorithm: 'sha256',
+    days: 365,
+    keySize: 2048,
+    extensions: [
+      {
+        name: 'subjectAltName',
+        altNames: [
+          { type: 2, value: 'localhost' },
+          { type: 7, ip: '127.0.0.1' },
+          { type: 7, ip: localIP }
+        ]
+      }
+    ]
+  });
+
+  // Save certificates
+  fs.writeFileSync(certFile, pems.cert);
+  fs.writeFileSync(keyFile, pems.private);
+
+  console.log('SSL certificates generated and saved.');
+
+  return {
+    cert: pems.cert,
+    key: pems.private
+  };
+}
+
+// Create Express server with HTTPS
 function createExpressServer() {
   expressApp = express();
-  httpServer = http.createServer(expressApp);
+
+  // Get SSL certificates
+  const sslOptions = getSSLCertificates();
+
+  // Create HTTPS server
+  httpsServer = https.createServer(sslOptions, expressApp);
+
+  // Also create HTTP server for redirect
+  httpServer = http.createServer((req, res) => {
+    const localIP = getLocalIP();
+    res.writeHead(301, { Location: `https://${localIP}:${HTTPS_PORT}${req.url}` });
+    res.end();
+  });
 
   // Serve static files from mobile directory
   expressApp.use(express.static(path.join(__dirname, 'mobile')));
@@ -45,19 +118,30 @@ function createExpressServer() {
   expressApp.get('/api/config', (req, res) => {
     const localIP = getLocalIP();
     res.json({
-      wsUrl: `ws://${localIP}:${WS_PORT}`,
-      serverIP: localIP
+      wsUrl: `wss://${localIP}:${WS_PORT}`,
+      serverIP: localIP,
+      httpsPort: HTTPS_PORT
     });
   });
 
-  httpServer.listen(PORT, '0.0.0.0', () => {
-    console.log(`HTTP Server running on port ${PORT}`);
+  httpsServer.listen(HTTPS_PORT, '0.0.0.0', () => {
+    console.log(`HTTPS Server running on port ${HTTPS_PORT}`);
+  });
+
+  httpServer.listen(HTTP_PORT, '0.0.0.0', () => {
+    console.log(`HTTP Server (redirect) running on port ${HTTP_PORT}`);
   });
 }
 
-// Create WebSocket server for video streaming
+// Create WebSocket server for video streaming (with SSL)
 function createWebSocketServer() {
-  wss = new WebSocket.Server({ port: WS_PORT, host: '0.0.0.0' });
+  const sslOptions = getSSLCertificates();
+
+  wss = new WebSocket.Server({
+    port: WS_PORT,
+    host: '0.0.0.0',
+    ...sslOptions
+  });
 
   wss.on('connection', (ws, req) => {
     const clientIP = req.socket.remoteAddress;
@@ -108,7 +192,7 @@ function createWebSocketServer() {
     });
   });
 
-  console.log(`WebSocket Server running on port ${WS_PORT}`);
+  console.log(`WebSocket Server (WSS) running on port ${WS_PORT}`);
 }
 
 // Create the main application window
@@ -145,7 +229,7 @@ function createWindow() {
 // Generate QR Code for easy mobile connection
 async function generateQRCode() {
   const localIP = getLocalIP();
-  const url = `http://${localIP}:${PORT}`;
+  const url = `https://${localIP}:${HTTPS_PORT}`;
 
   try {
     const qrDataUrl = await QRCode.toDataURL(url, {
@@ -156,10 +240,10 @@ async function generateQRCode() {
         light: '#ffffff'
       }
     });
-    return { qrDataUrl, url, ip: localIP };
+    return { qrDataUrl, url, ip: localIP, port: HTTPS_PORT };
   } catch (error) {
     console.error('Error generating QR code:', error);
-    return { url, ip: localIP, error: error.message };
+    return { url, ip: localIP, port: HTTPS_PORT, error: error.message };
   }
 }
 
@@ -170,11 +254,11 @@ ipcMain.handle('get-connection-info', async () => {
 
 ipcMain.handle('get-server-status', () => {
   return {
-    httpRunning: !!httpServer,
+    httpsRunning: !!httpsServer,
     wsRunning: !!wss,
     connectedClients: connectedClients.size,
     localIP: getLocalIP(),
-    httpPort: PORT,
+    httpsPort: HTTPS_PORT,
     wsPort: WS_PORT
   };
 });
@@ -210,6 +294,9 @@ app.on('window-all-closed', () => {
 
 app.on('before-quit', () => {
   // Clean up servers
+  if (httpsServer) {
+    httpsServer.close();
+  }
   if (httpServer) {
     httpServer.close();
   }

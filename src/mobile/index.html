@@ -679,8 +679,35 @@
     btnToggleStream.addEventListener('click', toggleStreaming);
     btnFlash.addEventListener('click', toggleFlash);
 
+    // Check if camera API is available
+    function checkCameraSupport() {
+      // Check if we're in a secure context
+      if (!window.isSecureContext) {
+        showOverlay('error', '🔒', 'Conexao nao segura',
+          'A camera so funciona em HTTPS. Ao acessar a pagina, aceite o certificado clicando em "Avancado" > "Continuar".');
+        return false;
+      }
+
+      // Check if mediaDevices API exists
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        showOverlay('error', '❌', 'Camera nao suportada',
+          'Seu navegador nao suporta acesso a camera. Tente usar o Chrome ou Safari.');
+        return false;
+      }
+
+      return true;
+    }
+
     // Initialize
     async function init() {
+      // First check if camera is supported
+      if (!checkCameraSupport()) {
+        console.error('Camera not supported in this context');
+        // Still try to connect WebSocket for status updates
+        await connectWebSocket();
+        return;
+      }
+
       await requestWakeLock();
       await connectWebSocket();
     }
