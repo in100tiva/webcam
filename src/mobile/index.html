@@ -534,10 +534,14 @@
       const ctx = captureCanvas.getContext('2d', { alpha: false, desynchronized: true });
       const frameDelay = 1000 / settings.fps;
 
-      // Scale down canvas for better performance on high res
-      const scale = currentQuality === 'high' ? 0.75 : 1;
-      captureCanvas.width = Math.floor(settings.width * scale);
-      captureCanvas.height = Math.floor(settings.height * scale);
+      // Use REAL video dimensions to preserve aspect ratio
+      const realWidth = cameraPreview.videoWidth;
+      const realHeight = cameraPreview.videoHeight;
+
+      // Scale down for performance but keep real aspect ratio
+      const scale = currentQuality === 'high' ? 0.75 : (currentQuality === 'medium' ? 0.9 : 1);
+      captureCanvas.width = Math.floor(realWidth * scale);
+      captureCanvas.height = Math.floor(realHeight * scale);
 
       let isSending = false;
 

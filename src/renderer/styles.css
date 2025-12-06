@@ -126,22 +126,23 @@ body {
   background: var(--bg-secondary);
   border-radius: var(--border-radius);
   overflow: hidden;
-  min-height: 450px;
   display: flex;
   align-items: center;
   justify-content: center;
   border: 1px solid var(--border-color);
   box-shadow: var(--shadow-lg);
+  min-height: 300px;
 }
 
 .video-preview {
+  display: block;
   max-width: 100%;
-  max-height: 100%;
+  max-height: 70vh;
   width: auto;
   height: auto;
   object-fit: contain;
   background: #000;
-  transition: var(--transition);
+  transition: transform 0.3s ease;
 }
 
 .video-preview.hidden {
