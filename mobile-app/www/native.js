@@ -84,8 +84,33 @@
         scanWrap.style.display = 'none';
       }
 
-      function finish(ip) {
+      // Testa a conexão ws:// antes de prosseguir — dá feedback imediato
+      // (em vez de travar em "conectando") se o IP estiver errado, a porta
+      // estiver bloqueada por firewall, ou não estiverem na mesma rede.
+      function testConnect(ip) {
+        return new Promise((res) => {
+          const url = `ws://${ip}:${WS_PLAIN_PORT}`;
+          let done = false, ws;
+          try { ws = new WebSocket(url); } catch (e) { return res(false); }
+          const t = setTimeout(() => {
+            if (!done) { done = true; try { ws.close(); } catch (e) {} res(false); }
+          }, 6000);
+          ws.onopen = () => { if (!done) { done = true; clearTimeout(t); try { ws.close(); } catch (e) {} res(true); } };
+          ws.onerror = () => { if (!done) { done = true; clearTimeout(t); res(false); } };
+        });
+      }
+
+      async function finish(ip) {
         if (!ip) { errEl.textContent = 'IP inválido.'; return; }
+        errEl.style.color = '#a78bfa';
+        errEl.textContent = `Conectando em ${ip}:${WS_PLAIN_PORT}…`;
+        const ok = await testConnect(ip);
+        errEl.style.color = '#f87171';
+        if (!ok) {
+          errEl.textContent = `Não conectou em ${ip}:${WS_PLAIN_PORT}. ` +
+            `Verifique: mesma rede WiFi, e libere a porta 8445 no firewall do PC.`;
+          return;
+        }
         localStorage.setItem(LS_KEY, ip);
         stopScan();
         ui.remove();
