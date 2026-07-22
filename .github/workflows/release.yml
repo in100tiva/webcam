@@ -1,0 +1,89 @@
+name: Build & Release Installers
+
+# Builda os 3 instaladores e anexa ao GitHub Release da tag.
+# Windows roda em runner nativo (não precisa de Wine).
+#
+# Uso: crie e envie uma tag, ex.:
+#   git tag v2.0.1 && git push origin v2.0.1
+# Isso dispara o build e publica PhoneWebcam-{linux.deb,linux.AppImage,windows.exe,android.apk}.
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm ci
+      - name: Build .deb + AppImage
+        run: npx electron-builder --linux deb AppImage --publish never
+      - name: Renomear artefatos
+        run: |
+          mkdir -p out
+          cp dist/*.deb "out/PhoneWebcam-linux.deb"
+          cp dist/*.AppImage "out/PhoneWebcam-linux.AppImage"
+      - name: Publicar no Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: out/*
+
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm ci
+      - name: Build .exe (NSIS, nativo — sem Wine)
+        run: npx electron-builder --win nsis --publish never
+      - name: Renomear artefato
+        shell: bash
+        run: |
+          mkdir -p out
+          cp dist/*.exe "out/PhoneWebcam-windows.exe"
+      - name: Publicar no Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: out/PhoneWebcam-windows.exe
+
+  android:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - uses: android-actions/setup-android@v3
+      - name: Build APK
+        working-directory: mobile-app
+        run: |
+          npm install
+          npx cap sync android
+          cd android
+          chmod +x gradlew
+          ./gradlew assembleDebug
+      - name: Renomear artefato
+        run: |
+          mkdir -p out
+          cp mobile-app/android/app/build/outputs/apk/debug/app-debug.apk "out/PhoneWebcam-android.apk"
+      - name: Publicar no Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: out/PhoneWebcam-android.apk

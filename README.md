@@ -2,6 +2,20 @@
 
 Use a câmera do seu celular como webcam no PC via WiFi usando Electron.js.
 
+## ⬇️ Download
+
+Baixe os instaladores na [página de Releases](https://github.com/in100tiva/webcam/releases/latest):
+
+| Plataforma | Arquivo |
+|---|---|
+| 🐧 Linux (Ubuntu/Debian/Mint) | `PhoneWebcam-linux.deb` — `sudo apt install ./PhoneWebcam-linux.deb` (configura a webcam virtual sozinho) |
+| 🪟 Windows 10/11 | `PhoneWebcam-windows.exe` |
+| 🤖 Android (celular) | `PhoneWebcam-android.apk` |
+
+Landing page de download em `site/` (deploy na Vercel). Os instaladores são
+gerados automaticamente pelo CI (`.github/workflows/release.yml`) ao enviar uma
+tag `v*`.
+
 ## Funcionalidades
 
 - 📹 Streaming de vídeo em tempo real via WebSocket (SSL)
