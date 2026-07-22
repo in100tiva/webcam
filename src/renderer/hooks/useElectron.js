@@ -8,18 +8,21 @@ export function useElectron() {
   const [connectedDevices, setConnectedDevices] = useState(0)
   const [connectionInfo, setConnectionInfo] = useState(null)
   const [serverStatus, setServerStatus] = useState(null)
-  const [currentFrame, setCurrentFrame] = useState(null)
   const [resolution, setResolution] = useState(null)
   const [fps, setFps] = useState(0)
   const [vcamRunning, setVcamRunning] = useState(false)
+  const [hasFrame, setHasFrame] = useState(false)
 
   // Gate for frame forwarding — read inside the frame listener without
   // re-subscribing on every toggle (a ref survives re-renders).
   const vcamActiveRef = useRef(false)
 
-  // FPS counter
-  const [frameCount, setFrameCount] = useState(0)
-  const [lastFpsUpdate, setLastFpsUpdate] = useState(Date.now())
+  // The preview <img> is updated imperatively via this ref. Doing it through
+  // React state would re-render the whole tree on every frame (24fps) and
+  // froze the preview; setting img.src directly keeps it real-time.
+  const previewImgRef = useRef(null)
+  const hasFrameRef = useRef(false)
+  const frameCounterRef = useRef(0)
 
   // Initialize connection info
   const loadConnectionInfo = useCallback(async () => {
@@ -106,12 +109,17 @@ export function useElectron() {
   useEffect(() => {
     if (!electronAPI) return
 
-    // Handle video frames
+    // Handle video frames — update the <img> imperatively (no React state).
     const handleVideoFrame = (frameData) => {
-      setCurrentFrame(`data:image/jpeg;base64,${frameData}`)
-      setFrameCount(prev => prev + 1)
-      // The virtual camera is now fed directly in the main process from the
-      // raw WebSocket frame — no renderer round-trip needed here.
+      frameCounterRef.current++
+      const img = previewImgRef.current
+      if (img) img.src = `data:image/jpeg;base64,${frameData}`
+      if (!hasFrameRef.current) {
+        hasFrameRef.current = true
+        setHasFrame(true)
+      }
+      // The virtual camera is fed directly in the main process from the raw
+      // WebSocket frame — no renderer round-trip needed here.
     }
 
     // Handle control messages
@@ -132,7 +140,9 @@ export function useElectron() {
       setConnectedDevices(data.totalClients)
       if (data.totalClients === 0) {
         setIsConnected(false)
-        setCurrentFrame(null)
+        hasFrameRef.current = false
+        setHasFrame(false)
+        if (previewImgRef.current) previewImgRef.current.removeAttribute('src')
         setResolution(null)
       }
     }
@@ -156,27 +166,22 @@ export function useElectron() {
     }
   }, [loadConnectionInfo])
 
-  // FPS calculation
+  // FPS calculation — stable 1s interval reading the frame counter ref.
   useEffect(() => {
     const interval = setInterval(() => {
-      const now = Date.now()
-      const elapsed = now - lastFpsUpdate
-      if (elapsed >= 1000) {
-        setFps(Math.round((frameCount * 1000) / elapsed))
-        setFrameCount(0)
-        setLastFpsUpdate(now)
-      }
+      setFps(frameCounterRef.current)
+      frameCounterRef.current = 0
     }, 1000)
-
     return () => clearInterval(interval)
-  }, [frameCount, lastFpsUpdate])
+  }, [])
 
   return {
     isConnected,
     connectedDevices,
     connectionInfo,
     serverStatus,
-    currentFrame,
+    previewImgRef,
+    hasFrame,
     resolution,
     fps,
     loadConnectionInfo,

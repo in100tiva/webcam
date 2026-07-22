@@ -43,10 +43,7 @@ import { useElectron } from '@/hooks/useElectron'
 import { cn } from '@/lib/utils'
 
 // Video Preview Component
-function VideoPreview({ frame, isMirrored, rotation, onSnapshot }) {
-  const imgRef = useRef(null)
-  const canvasRef = useRef(null)
-
+function VideoPreview({ previewImgRef, hasFrame, isMirrored, rotation }) {
   const getRotationClass = () => {
     const classes = []
     if (isMirrored) classes.push('mirrored')
@@ -56,32 +53,7 @@ function VideoPreview({ frame, isMirrored, rotation, onSnapshot }) {
     return classes.join(' ')
   }
 
-  const handleSnapshot = useCallback(() => {
-    if (!imgRef.current || !frame) return
-
-    const canvas = canvasRef.current
-    const ctx = canvas.getContext('2d')
-    const img = imgRef.current
-
-    canvas.width = img.naturalWidth
-    canvas.height = img.naturalHeight
-
-    if (isMirrored) {
-      ctx.translate(canvas.width, 0)
-      ctx.scale(-1, 1)
-    }
-
-    ctx.drawImage(img, 0, 0)
-
-    const link = document.createElement('a')
-    link.download = `snapshot_${Date.now()}.jpg`
-    link.href = canvas.toDataURL('image/jpeg', 0.9)
-    link.click()
-
-    onSnapshot?.()
-  }, [frame, isMirrored, onSnapshot])
-
-  if (!frame) {
+  if (!hasFrame) {
     return (
       <div className="flex flex-col items-center justify-center h-full min-h-[400px] text-muted-foreground">
         <Camera className="w-20 h-20 mb-4 opacity-20" />
@@ -91,16 +63,13 @@ function VideoPreview({ frame, isMirrored, rotation, onSnapshot }) {
     )
   }
 
+  // src is set imperatively by useElectron on each frame (no re-render).
   return (
-    <>
-      <img
-        ref={imgRef}
-        src={frame}
-        alt="Camera Preview"
-        className={cn("video-preview", getRotationClass())}
-      />
-      <canvas ref={canvasRef} className="hidden" />
-    </>
+    <img
+      ref={previewImgRef}
+      alt="Camera Preview"
+      className={cn("video-preview", getRotationClass())}
+    />
   )
 }
 
@@ -503,7 +472,8 @@ function AppContent() {
     connectedDevices,
     connectionInfo,
     serverStatus,
-    currentFrame,
+    previewImgRef,
+    hasFrame,
     resolution,
     fps,
     selectIP,
@@ -610,10 +580,10 @@ function AppContent() {
             className="flex-1 bg-black/50 rounded-lg border flex items-center justify-center overflow-hidden"
           >
             <VideoPreview
-              frame={currentFrame}
+              previewImgRef={previewImgRef}
+              hasFrame={hasFrame}
               isMirrored={isMirrored}
               rotation={rotation}
-              onSnapshot={handleSnapshot}
             />
           </div>
 
@@ -631,7 +601,7 @@ function AppContent() {
 
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Button variant="secondary" size="icon" onClick={handleSnapshot} disabled={!currentFrame}>
+                  <Button variant="secondary" size="icon" onClick={handleSnapshot} disabled={!hasFrame}>
                     <Download className="w-4 h-4" />
                   </Button>
                 </TooltipTrigger>
