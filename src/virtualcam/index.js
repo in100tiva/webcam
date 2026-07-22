@@ -266,6 +266,11 @@ class VirtualCamera {
     }
 
     if (this.platform === 'linux') {
+      // Ensure the loopback device exists — create it (pkexec) if missing.
+      if (!fs.existsSync('/dev/video10')) {
+        await this.resetDevice();
+      }
+
       // Resolve the loopback device (driverId may be the driver object or an id).
       let device = (driverId && driverId.device) || null;
       if (!device) {
@@ -273,31 +278,31 @@ class VirtualCamera {
         device = (drivers[0] && drivers[0].device) || '/dev/video10';
       }
       this.device = device;
-
-      // Phone frames arrive as JPEG. Pre-warm the MJPEG->v4l2 pipeline so the
-      // first frame doesn't race the spawn. Under exclusive_caps=1 the device
-      // accepts a SINGLE writer, so we must NOT also open a raw pipeline here.
       this.isRunning = true;
-      const ok = await this.startJpegPipeline();
-      if (!ok) {
-        this.isRunning = false;
-        return {
-          success: false,
-          message: 'Não foi possível abrir ' + device + '. Cheque o v4l2loopback e as permissões (chmod 666).'
-        };
-      }
-      // spawn() succeeds even if ffmpeg dies right after (e.g. device wedged).
-      // Wait briefly and confirm the process is still alive before reporting OK.
+      this._crashCount = 0;
+
+      // Pre-warm the MJPEG->v4l2 pipeline; the main process feeds phone frames.
+      let ok = await this.startJpegPipeline();
       await new Promise((r) => setTimeout(r, 700));
-      if (!this.jpegProcess) {
+
+      // If it couldn't start / died immediately (missing or wedged device),
+      // recover the device once via pkexec (fresh module) and try again.
+      if (!ok || !this.jpegProcess) {
+        await this.resetDevice();
+        this.device = '/dev/video10';
+        this._crashCount = 0;
+        ok = await this.startJpegPipeline();
+        await new Promise((r) => setTimeout(r, 700));
+      }
+
+      if (!ok || !this.jpegProcess) {
         this.isRunning = false;
         return {
           success: false,
-          message: 'O device ' + device + ' recusou o formato (VIDIOC_G_FMT). ' +
-                   'Recarregue o módulo: sudo modprobe -r v4l2loopback && sudo modprobe v4l2loopback'
+          message: 'Não foi possível preparar a webcam virtual. Tente reinstalar o app ou reiniciar o PC.'
         };
       }
-      return { success: true, message: 'Virtual camera iniciada em ' + device };
+      return { success: true, message: 'Virtual camera iniciada em ' + this.device };
     }
 
     return { success: false, message: 'Plataforma não suportada' };
@@ -429,9 +434,50 @@ class VirtualCamera {
     this.jpegProcess.on('close', (code) => {
       console.log('FFmpeg JPEG closed with code:', code);
       this.jpegProcess = null;
+      // Rapid, repeated crashes => the device is wedged. Recover it once via
+      // pkexec (reloads a fresh module) so the user never touches a terminal.
+      if (this.isRunning) {
+        const now = Date.now();
+        if (!this._lastCrash || (now - this._lastCrash) > 10000) this._crashCount = 0;
+        this._lastCrash = now;
+        this._crashCount = (this._crashCount || 0) + 1;
+        if (this._crashCount >= 3 && !this._resetting) {
+          this._crashCount = 0;
+          this._resetting = true;
+          console.log('Virtual camera wedged — auto-recovering device...');
+          this.resetDevice().then(() => { this._resetting = false; });
+        }
+      }
     });
 
     return true;
+  }
+
+  /**
+   * Reload the v4l2loopback kernel module to get a fresh /dev/video10.
+   * Loading a kernel module needs root, so we use pkexec — a graphical
+   * password prompt (PolicyKit). No terminal required from the user.
+   */
+  resetDevice() {
+    return new Promise((resolve) => {
+      if (this.platform !== 'linux') return resolve(false);
+      // Stop our own producer so the module can be unloaded.
+      if (this.jpegProcess) {
+        try { this.jpegProcess.stdin.end(); this.jpegProcess.kill('SIGKILL'); } catch (e) {}
+        this.jpegProcess = null;
+      }
+      const script =
+        'export PATH=/usr/sbin:/usr/bin:/sbin:/bin; ' +
+        'modprobe -r v4l2loopback 2>/dev/null; ' +
+        'modprobe v4l2loopback video_nr=10 card_label="Phone Webcam" exclusive_caps=1 max_width=1920 max_height=1080; ' +
+        'chmod 666 /dev/video10';
+      console.log('Resetting v4l2loopback via pkexec...');
+      exec(`pkexec bash -c '${script}'`, (err) => {
+        if (err) console.error('resetDevice (pkexec) error:', err.message);
+        // give udev/module a moment to settle
+        setTimeout(() => resolve(!err), 1200);
+      });
+    });
   }
 
   /**
