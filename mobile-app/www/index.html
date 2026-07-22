@@ -544,14 +544,22 @@
       const ctx = captureCanvas.getContext('2d', { alpha: false, desynchronized: true });
       const frameDelay = 1000 / settings.fps;
 
-      // Use REAL video dimensions to preserve aspect ratio
-      const realWidth = cameraPreview.videoWidth;
-      const realHeight = cameraPreview.videoHeight;
-
-      // Scale down for performance but keep real aspect ratio
-      const scale = currentQuality === 'high' ? 0.75 : (currentQuality === 'medium' ? 0.9 : 1);
-      captureCanvas.width = Math.floor(realWidth * scale);
-      captureCanvas.height = Math.floor(realHeight * scale);
+      // Cap the LONGEST side to the quality target (settings.width). The
+      // camera usually delivers much higher than the label (e.g. 1080p), and
+      // the Android WebView is slow at toBlob — encoding the full native frame
+      // was what made the app lag while the desktop browser stayed smooth.
+      const realWidth = cameraPreview.videoWidth || settings.width;
+      const realHeight = cameraPreview.videoHeight || settings.height;
+      const maxSide = settings.width;
+      let cw = realWidth, ch = realHeight;
+      const longest = Math.max(cw, ch);
+      if (longest > maxSide) {
+        const k = maxSide / longest;
+        cw = Math.round(cw * k);
+        ch = Math.round(ch * k);
+      }
+      captureCanvas.width = Math.max(2, cw - (cw % 2));
+      captureCanvas.height = Math.max(2, ch - (ch % 2));
 
       let isSending = false;
 

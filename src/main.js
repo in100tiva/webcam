@@ -159,6 +159,15 @@ function createExpressServer() {
     });
   });
 
+  httpsServer.on('error', (err) => {
+    console.error('HTTPS server error:', err.code || err.message);
+    if (err.code === 'EADDRINUSE') showPortError(HTTPS_PORT);
+  });
+  // Port 8080 is only an HTTP->HTTPS redirect helper; never fatal if taken.
+  httpServer.on('error', (err) => {
+    console.warn('HTTP redirect server error (ignorado):', err.code || err.message);
+  });
+
   httpsServer.listen(HTTPS_PORT, '0.0.0.0', () => {
     console.log(`HTTPS Server running on port ${HTTPS_PORT}`);
   });
@@ -166,6 +175,21 @@ function createExpressServer() {
   httpServer.listen(HTTP_PORT, '0.0.0.0', () => {
     console.log(`HTTP Server (redirect) running on port ${HTTP_PORT}`);
   });
+}
+
+// Show a single friendly dialog when a port is already in use.
+let portErrorShown = false;
+function showPortError(port) {
+  if (portErrorShown) return;
+  portErrorShown = true;
+  try {
+    const { dialog } = require('electron');
+    dialog.showErrorBox(
+      'Porta em uso',
+      `A porta ${port} já está em uso. Feche outras instâncias do Phone Webcam ` +
+      `(ou o programa que estiver usando essa porta) e abra novamente.`
+    );
+  } catch (e) { /* no-op */ }
 }
 
 // Shared connection handler for both the WSS (browser) and plain WS (app) servers.
@@ -243,6 +267,10 @@ function createWebSocketServer() {
 
   wssServer = https.createServer(sslOptions);
   wss = new WebSocket.Server({ server: wssServer });
+  wssServer.on('error', (err) => {
+    console.error('WSS server error:', err.code || err.message);
+    if (err.code === 'EADDRINUSE') showPortError(WS_PORT);
+  });
   wssServer.listen(WS_PORT, '0.0.0.0', () => {
     console.log(`WebSocket Server (WSS) running on port ${WS_PORT}`);
   });
@@ -251,6 +279,10 @@ function createWebSocketServer() {
   // Plain WS server for native app clients.
   wsPlainServer = http.createServer();
   wsPlain = new WebSocket.Server({ server: wsPlainServer });
+  wsPlainServer.on('error', (err) => {
+    console.error('plain ws server error:', err.code || err.message);
+    if (err.code === 'EADDRINUSE') showPortError(WS_PLAIN_PORT);
+  });
   wsPlainServer.listen(WS_PLAIN_PORT, '0.0.0.0', () => {
     console.log(`WebSocket Server (plain ws) running on port ${WS_PLAIN_PORT}`);
   });
@@ -472,17 +504,31 @@ ipcMain.on('vcam-send-frame', (event, frameData) => {
 });
 
 // App lifecycle
-app.whenReady().then(() => {
-  createExpressServer();
-  createWebSocketServer();
-  createWindow();
-
-  app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) {
-      createWindow();
+// Single-instance lock: impede uma 2ª instância de subir os servidores
+// (a causa do EADDRINUSE ao abrir o app com outra instância já rodando).
+const gotSingleInstanceLock = app.requestSingleInstanceLock();
+if (!gotSingleInstanceLock) {
+  app.quit();
+} else {
+  app.on('second-instance', () => {
+    if (mainWindow) {
+      if (mainWindow.isMinimized()) mainWindow.restore();
+      mainWindow.focus();
     }
   });
-});
+
+  app.whenReady().then(() => {
+    createExpressServer();
+    createWebSocketServer();
+    createWindow();
+
+    app.on('activate', () => {
+      if (BrowserWindow.getAllWindows().length === 0) {
+        createWindow();
+      }
+    });
+  });
+}
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
