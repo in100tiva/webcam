@@ -25,3 +25,20 @@ npm-debug.log*
 
 # Electron
 *.asar
+
+# Distribution packages (hosted on GitHub Releases, not in git)
+pacotes/
+*.deb
+*.apk
+*.exe
+*.AppImage
+landing/
+
+# Mobile app (Capacitor) — build artifacts
+mobile-app/node_modules/
+mobile-app/android/.gradle/
+mobile-app/android/build/
+mobile-app/android/app/build/
+mobile-app/android/local.properties
+mobile-app/android/app/src/main/assets/public/
+mobile-app/android/.idea/

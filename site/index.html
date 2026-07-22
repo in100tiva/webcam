@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Phone Webcam — Sua câmera do celular como webcam no PC</title>
+<meta name="description" content="Use a câmera do seu celular como webcam no PC (Zoom, Meet, Teams, Discord) via WiFi. Grátis, local, sem nuvem." />
+<meta property="og:title" content="Phone Webcam" />
+<meta property="og:description" content="A câmera do seu celular vira webcam no PC. Grátis, por WiFi, sem nuvem." />
+<meta property="og:type" content="website" />
+<link rel="icon" href="icon.png" />
+<style>
+  :root{
+    --bg:#0a0a0f; --card:#16161f; --border:#262636;
+    --txt:#f4f4f7; --muted:#9aa0b4; --brand:#7c3aed; --brand2:#a78bfa; --accent:#22d3ee;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth}
+  body{background:var(--bg);color:var(--txt);
+    font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;line-height:1.5;-webkit-font-smoothing:antialiased}
+  a{color:inherit;text-decoration:none}
+  .wrap{max-width:1080px;margin:0 auto;padding:0 24px}
+
+  .hero{position:relative;overflow:hidden;padding:88px 0 72px;text-align:center}
+  .hero::before{content:"";position:absolute;inset:0;z-index:0;
+    background:radial-gradient(600px 300px at 50% -10%, rgba(124,58,237,.45), transparent 70%),
+      radial-gradient(500px 260px at 85% 10%, rgba(34,211,238,.18), transparent 70%)}
+  .hero>*{position:relative;z-index:1}
+  .badge{display:inline-flex;align-items:center;gap:8px;font-size:13px;color:var(--brand2);
+    background:rgba(124,58,237,.12);border:1px solid rgba(124,58,237,.35);padding:6px 14px;border-radius:999px;margin-bottom:28px}
+  .logo{width:88px;height:88px;border-radius:22px;margin:0 auto 24px;display:block;box-shadow:0 12px 40px rgba(124,58,237,.4)}
+  h1{font-size:clamp(34px,6vw,58px);line-height:1.05;letter-spacing:-.02em;font-weight:800}
+  h1 .grad{background:linear-gradient(120deg,var(--brand2),var(--accent));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+  .sub{color:var(--muted);font-size:clamp(16px,2.4vw,20px);max-width:620px;margin:20px auto 0}
+  .cta{margin-top:40px;display:flex;gap:14px;justify-content:center;flex-wrap:wrap}
+  .btn{display:inline-flex;align-items:center;gap:10px;font-weight:600;font-size:15px;padding:14px 22px;border-radius:14px;
+    border:1px solid var(--border);background:var(--card);transition:transform .12s,border-color .12s,background .12s;cursor:pointer}
+  .btn:hover{transform:translateY(-2px);border-color:var(--brand)}
+  .btn.primary{background:linear-gradient(120deg,var(--brand),#6d28d9);border-color:transparent;box-shadow:0 8px 28px rgba(124,58,237,.4)}
+  .btn.disabled{opacity:.5;pointer-events:none}
+  .btn .ico{font-size:20px;line-height:1}
+  .btn small{display:block;font-weight:400;font-size:11px;color:var(--muted)}
+  .btn.primary small{color:rgba(255,255,255,.8)}
+
+  section.block{padding:64px 0;border-top:1px solid var(--border)}
+  h2{font-size:28px;text-align:center;letter-spacing:-.01em;margin-bottom:8px}
+  .lead{color:var(--muted);text-align:center;max-width:560px;margin:0 auto 44px}
+  .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
+  @media(max-width:760px){.grid{grid-template-columns:1fr}}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:18px;padding:26px}
+  .card .n{width:34px;height:34px;border-radius:10px;background:rgba(124,58,237,.15);color:var(--brand2);
+    display:flex;align-items:center;justify-content:center;font-weight:700;margin-bottom:14px}
+  .card h3{font-size:17px;margin-bottom:8px}
+  .card p{color:var(--muted);font-size:14px}
+
+  .dl{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
+  @media(max-width:760px){.dl{grid-template-columns:1fr}}
+  .dcard{background:var(--card);border:1px solid var(--border);border-radius:18px;padding:28px;text-align:center;
+    display:flex;flex-direction:column;align-items:center;gap:6px}
+  .dcard .os{font-size:40px}
+  .dcard h3{font-size:19px;margin-top:6px}
+  .dcard .meta{color:var(--muted);font-size:13px;margin-bottom:16px}
+  .dcard .btn{width:100%;justify-content:center}
+  .tag{font-size:11px;color:var(--accent);border:1px solid rgba(34,211,238,.35);background:rgba(34,211,238,.1);padding:3px 9px;border-radius:999px}
+  code{background:#0d0d16;border:1px solid var(--border);border-radius:8px;padding:2px 8px;font-size:13px;color:var(--brand2)}
+  footer{padding:40px 0 60px;text-align:center;color:var(--muted);font-size:13px;border-top:1px solid var(--border)}
+</style>
+</head>
+<body>
+
+  <header class="hero">
+    <div class="wrap">
+      <img class="logo" src="icon.png" alt="Phone Webcam" />
+      <div class="badge">📷 Grátis · Funciona por WiFi · Sem nuvem</div>
+      <h1>A câmera do seu celular<br/><span class="grad">vira webcam no PC</span></h1>
+      <p class="sub">Use a câmera do celular no Zoom, Meet, Teams e Discord. Abre os dois apps,
+        escaneia o QR Code e pronto — vídeo em alta qualidade pela sua rede local.</p>
+      <div class="cta">
+        <a class="btn primary" href="#download"><span class="ico">⬇️</span> Baixar agora</a>
+        <a class="btn" href="#como"><span class="ico">▶️</span> Como funciona</a>
+      </div>
+    </div>
+  </header>
+
+  <section class="block" id="como">
+    <div class="wrap">
+      <h2>Como funciona</h2>
+      <p class="lead">Três passos. Sem cadastro, sem servidor externo, sem instalar drivers manualmente.</p>
+      <div class="grid">
+        <div class="card"><div class="n">1</div><h3>Instale nos dois</h3>
+          <p>O app no PC (Linux ou Windows) e o app no celular (Android). O instalador do PC já configura tudo sozinho.</p></div>
+        <div class="card"><div class="n">2</div><h3>Escaneie o QR</h3>
+          <p>Abra os dois na mesma rede WiFi e escaneie o QR Code que aparece no PC. Conecta na hora.</p></div>
+        <div class="card"><div class="n">3</div><h3>Use como webcam</h3>
+          <p>Clique em “Iniciar Webcam Virtual” e selecione <b>Phone Webcam</b> no Zoom, Meet, Teams ou Discord.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="block" id="download">
+    <div class="wrap">
+      <h2>Baixar</h2>
+      <p class="lead">Escolha sua plataforma. O celular é sempre Android; o PC pode ser Linux ou Windows.</p>
+      <div class="dl">
+
+        <div class="dcard">
+          <div class="os">🐧</div><h3>Linux</h3>
+          <div class="meta">Pacote .deb · Ubuntu / Debian / Mint</div>
+          <a class="btn primary" href="https://github.com/in100tiva/webcam/releases/latest/download/PhoneWebcam-linux.deb">
+            <span class="ico">⬇️</span><span>Baixar .deb <small>~96 MB</small></span></a>
+          <p class="meta" style="margin-top:14px"><code>sudo apt install ./PhoneWebcam-linux.deb</code></p>
+        </div>
+
+        <div class="dcard">
+          <div class="os">🪟</div><h3>Windows</h3>
+          <div class="meta">Instalador .exe · Windows 10/11 (64-bit)</div>
+          <a class="btn primary" href="https://github.com/in100tiva/webcam/releases/latest/download/PhoneWebcam-windows.exe">
+            <span class="ico">⬇️</span><span>Baixar .exe <small>instalador</small></span></a>
+          <p class="meta" style="margin-top:14px">Requer <b>OBS Virtual Camera</b> (o app orienta).</p>
+        </div>
+
+        <div class="dcard">
+          <div class="os">🤖</div><h3>Android</h3>
+          <div class="meta">App .apk · Android 7+ <span class="tag">celular</span></div>
+          <a class="btn primary" href="https://github.com/in100tiva/webcam/releases/latest/download/PhoneWebcam-android.apk">
+            <span class="ico">⬇️</span><span>Baixar .apk <small>~3.8 MB</small></span></a>
+          <p class="meta" style="margin-top:14px">Permita “fontes desconhecidas” ao instalar.</p>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <div class="wrap">
+      Phone Webcam · streaming local por WiFi · nada sai da sua rede.<br/>
+      PC e celular precisam estar na mesma rede WiFi.
+    </div>
+  </footer>
+
+</body>
+</html>

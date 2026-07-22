@@ -1,0 +1,15 @@
+{
+  "name": "phone-webcam-mobile",
+  "version": "2.0.0",
+  "description": "Phone Webcam - app do celular (Capacitor)",
+  "scripts": {
+    "sync": "cap sync android",
+    "apk": "cd android && ./gradlew assembleDebug"
+  },
+  "dependencies": {
+    "@capacitor/android": "^6.2.1",
+    "@capacitor/cli": "^6.2.1",
+    "@capacitor/core": "^6.2.1",
+    "jsqr": "^1.4.0"
+  }
+}

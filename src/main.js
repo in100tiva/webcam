@@ -17,6 +17,8 @@ let httpsServer;
 let httpServer;
 let wssServer; // HTTPS server for WebSocket
 let wss;
+let wsPlainServer; // plain HTTP server for native-app WebSocket
+let wsPlain;
 let connectedClients = new Set();
 
 // Virtual Camera instance
@@ -25,6 +27,7 @@ let virtualCamera = null;
 const HTTPS_PORT = 8443;
 const HTTP_PORT = 8080;
 const WS_PORT = 8444;
+const WS_PLAIN_PORT = 8445; // plain ws:// for the native Android app
 
 // Certificate storage path
 const certsPath = path.join(app.getPath('userData'), 'certs');
@@ -148,8 +151,11 @@ function createExpressServer() {
     const localIP = getLocalIP();
     res.json({
       wsUrl: `wss://${localIP}:${WS_PORT}`,
+      wsPlainUrl: `ws://${localIP}:${WS_PLAIN_PORT}`,
       serverIP: localIP,
-      httpsPort: HTTPS_PORT
+      httpsPort: HTTPS_PORT,
+      wsPort: WS_PORT,
+      wsPlainPort: WS_PLAIN_PORT
     });
   });
 
@@ -162,77 +168,87 @@ function createExpressServer() {
   });
 }
 
-// Create WebSocket server for video streaming (with SSL)
-function createWebSocketServer() {
-  const sslOptions = getSSLCertificates();
+// Shared connection handler for both the WSS (browser) and plain WS (app) servers.
+function handleWsConnection(ws, req) {
+  const clientIP = req.socket.remoteAddress;
+  console.log(`New client connected: ${clientIP}`);
+  connectedClients.add(ws);
 
-  // Create a dedicated HTTPS server for WebSocket
-  wssServer = https.createServer(sslOptions);
+  // Notify renderer about new connection
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.webContents.send('client-connected', {
+      ip: clientIP,
+      totalClients: connectedClients.size
+    });
+  }
 
-  // Create WebSocket server attached to the HTTPS server
-  wss = new WebSocket.Server({ server: wssServer });
-
-  wssServer.listen(WS_PORT, '0.0.0.0', () => {
-    console.log(`WebSocket Server (WSS) running on port ${WS_PORT}`);
+  ws.on('message', (data) => {
+    // Forward video frame to renderer process
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      // Check if it's binary data (video frame) or text (control message)
+      if (Buffer.isBuffer(data)) {
+        const frameData = data.toString('base64');
+        mainWindow.webContents.send('video-frame', frameData);
+        // Also send to clean window if open
+        if (cleanWindow && !cleanWindow.isDestroyed()) {
+          cleanWindow.webContents.send('video-frame', frameData);
+        }
+      } else {
+        try {
+          const message = JSON.parse(data.toString());
+          mainWindow.webContents.send('control-message', message);
+        } catch (e) {
+          // If not JSON, treat as video data
+          const frameData = data.toString();
+          mainWindow.webContents.send('video-frame', frameData);
+          if (cleanWindow && !cleanWindow.isDestroyed()) {
+            cleanWindow.webContents.send('video-frame', frameData);
+          }
+        }
+      }
+    }
   });
 
-  wss.on('connection', (ws, req) => {
-    const clientIP = req.socket.remoteAddress;
-    console.log(`New client connected: ${clientIP}`);
-    connectedClients.add(ws);
+  ws.on('close', () => {
+    console.log(`Client disconnected: ${clientIP}`);
+    connectedClients.delete(ws);
 
-    // Notify renderer about new connection
     if (mainWindow && !mainWindow.isDestroyed()) {
-      mainWindow.webContents.send('client-connected', {
+      mainWindow.webContents.send('client-disconnected', {
         ip: clientIP,
         totalClients: connectedClients.size
       });
     }
-
-    ws.on('message', (data) => {
-      // Forward video frame to renderer process
-      if (mainWindow && !mainWindow.isDestroyed()) {
-        // Check if it's binary data (video frame) or text (control message)
-        if (Buffer.isBuffer(data)) {
-          const frameData = data.toString('base64');
-          mainWindow.webContents.send('video-frame', frameData);
-          // Also send to clean window if open
-          if (cleanWindow && !cleanWindow.isDestroyed()) {
-            cleanWindow.webContents.send('video-frame', frameData);
-          }
-        } else {
-          try {
-            const message = JSON.parse(data.toString());
-            mainWindow.webContents.send('control-message', message);
-          } catch (e) {
-            // If not JSON, treat as video data
-            const frameData = data.toString();
-            mainWindow.webContents.send('video-frame', frameData);
-            if (cleanWindow && !cleanWindow.isDestroyed()) {
-              cleanWindow.webContents.send('video-frame', frameData);
-            }
-          }
-        }
-      }
-    });
-
-    ws.on('close', () => {
-      console.log(`Client disconnected: ${clientIP}`);
-      connectedClients.delete(ws);
-
-      if (mainWindow && !mainWindow.isDestroyed()) {
-        mainWindow.webContents.send('client-disconnected', {
-          ip: clientIP,
-          totalClients: connectedClients.size
-        });
-      }
-    });
-
-    ws.on('error', (error) => {
-      console.error('WebSocket error:', error);
-      connectedClients.delete(ws);
-    });
   });
+
+  ws.on('error', (error) => {
+    console.error('WebSocket error:', error);
+    connectedClients.delete(ws);
+  });
+}
+
+// Create WebSocket servers for video streaming.
+// - WSS (8444): for the browser flow (page served over HTTPS, secure context).
+// - Plain WS (8445): for the native Android app (embedded page). The native
+//   WebView rejects the self-signed WSS cert, so the app uses cleartext ws://
+//   on the LAN. Same handler, same message protocol.
+function createWebSocketServer() {
+  const sslOptions = getSSLCertificates();
+
+  wssServer = https.createServer(sslOptions);
+  wss = new WebSocket.Server({ server: wssServer });
+  wssServer.listen(WS_PORT, '0.0.0.0', () => {
+    console.log(`WebSocket Server (WSS) running on port ${WS_PORT}`);
+  });
+  wss.on('connection', handleWsConnection);
+
+  // Plain WS server for native app clients.
+  wsPlainServer = http.createServer();
+  wsPlain = new WebSocket.Server({ server: wsPlainServer });
+  wsPlainServer.listen(WS_PLAIN_PORT, '0.0.0.0', () => {
+    console.log(`WebSocket Server (plain ws) running on port ${WS_PLAIN_PORT}`);
+  });
+  wsPlain.on('connection', handleWsConnection);
 }
 
 // Create the main application window

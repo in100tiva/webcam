@@ -144,23 +144,25 @@ class VirtualCamera {
    */
   checkV4l2Loopback() {
     return new Promise((resolve) => {
-      // Look for /dev/video* devices that are v4l2loopback
-      exec('v4l2-ctl --list-devices 2>/dev/null | grep -A1 "Dummy\\|Loopback\\|Virtual"', (error, stdout) => {
-        if (stdout) {
-          const match = stdout.match(/\/dev\/video\d+/);
-          resolve(match ? match[0] : null);
-        } else {
-          // Try to find any available loopback device
-          exec('ls /dev/video* 2>/dev/null', (err, out) => {
-            if (out) {
-              const devices = out.trim().split('\n');
-              // Return the last device (usually the loopback one)
-              resolve(devices.length > 1 ? devices[devices.length - 1] : null);
-            } else {
-              resolve(null);
+      // Identify the v4l2loopback device by reading its friendly name from
+      // sysfs. v4l2loopback exposes the card_label (our "Phone Webcam") there,
+      // which is reliable even when only a single /dev/video* device exists.
+      const cmd = 'for d in /dev/video*; do [ -e "$d" ] || continue; ' +
+        'n=$(cat /sys/class/video4linux/$(basename "$d")/name 2>/dev/null); ' +
+        'echo "$d|$n"; done';
+      exec(cmd, (err, out) => {
+        if (out) {
+          const lines = out.trim().split('\n').filter(Boolean);
+          for (const line of lines) {
+            const idx = line.indexOf('|');
+            const dev = idx >= 0 ? line.slice(0, idx) : line;
+            const name = idx >= 0 ? line.slice(idx + 1) : '';
+            if (/phone webcam|loopback|dummy|v4l2loopback|virtual/i.test(name)) {
+              return resolve(dev);
             }
-          });
+          }
         }
+        resolve(null);
       });
     });
   }
@@ -251,50 +253,47 @@ class VirtualCamera {
       };
     }
 
-    let ffmpegArgs;
-
-    if (this.platform === 'linux') {
-      // Linux - output to v4l2loopback device
-      const device = driverId.device || '/dev/video10';
-      ffmpegArgs = [
-        '-f', 'rawvideo',
-        '-pix_fmt', 'bgra',
-        '-s', `${width}x${height}`,
-        '-r', String(fps),
-        '-i', 'pipe:0',
-        '-f', 'v4l2',
-        '-pix_fmt', 'yuyv422',
-        device
-      ];
-    } else if (this.platform === 'darwin') {
+    if (this.platform === 'darwin') {
       // macOS - OBS Virtual Camera uses different approach
       return { success: false, message: 'macOS virtual camera requer OBS Studio rodando' };
     }
 
-    try {
-      this.ffmpegProcess = spawn(ffmpegPath.replace(/"/g, ''), ffmpegArgs, {
-        stdio: ['pipe', 'pipe', 'pipe']
-      });
+    if (this.platform === 'linux') {
+      // Resolve the loopback device (driverId may be the driver object or an id).
+      let device = (driverId && driverId.device) || null;
+      if (!device) {
+        const drivers = await this.detectDrivers();
+        device = (drivers[0] && drivers[0].device) || '/dev/video10';
+      }
+      this.device = device;
 
-      this.ffmpegProcess.on('error', (err) => {
-        console.error('FFmpeg error:', err);
-        this.isRunning = false;
-      });
-
-      this.ffmpegProcess.stderr.on('data', (data) => {
-        console.log('FFmpeg:', data.toString());
-      });
-
-      this.ffmpegProcess.on('close', (code) => {
-        console.log('FFmpeg closed with code:', code);
-        this.isRunning = false;
-      });
-
+      // Phone frames arrive as JPEG. Pre-warm the MJPEG->v4l2 pipeline so the
+      // first frame doesn't race the spawn. Under exclusive_caps=1 the device
+      // accepts a SINGLE writer, so we must NOT also open a raw pipeline here.
       this.isRunning = true;
-      return { success: true, message: 'Virtual camera iniciada!' };
-    } catch (error) {
-      return { success: false, message: 'Erro ao iniciar FFmpeg: ' + error.message };
+      const ok = await this.startJpegPipeline();
+      if (!ok) {
+        this.isRunning = false;
+        return {
+          success: false,
+          message: 'Não foi possível abrir ' + device + '. Cheque o v4l2loopback e as permissões (chmod 666).'
+        };
+      }
+      // spawn() succeeds even if ffmpeg dies right after (e.g. device wedged).
+      // Wait briefly and confirm the process is still alive before reporting OK.
+      await new Promise((r) => setTimeout(r, 700));
+      if (!this.jpegProcess) {
+        this.isRunning = false;
+        return {
+          success: false,
+          message: 'O device ' + device + ' recusou o formato (VIDIOC_G_FMT). ' +
+                   'Recarregue o módulo: sudo modprobe -r v4l2loopback && sudo modprobe v4l2loopback'
+        };
+      }
+      return { success: true, message: 'Virtual camera iniciada em ' + device };
     }
+
+    return { success: false, message: 'Plataforma não suportada' };
   }
 
   /**
@@ -333,14 +332,21 @@ class VirtualCamera {
    * @param {Buffer} jpegBuffer - JPEG image data
    */
   async sendJpegFrame(jpegBuffer) {
-    // For JPEG input, we need a different FFmpeg pipeline
+    if (!this.isRunning) return false;
+
+    // Respawn the pipeline if it died, but throttle to avoid a tight
+    // spawn/crash loop (30 fps => 30 ffmpeg spawns/s) when the device rejects.
     if (!this.jpegProcess) {
+      const now = Date.now();
+      if (this._lastJpegSpawn && (now - this._lastJpegSpawn) < 2000) return false;
+      this._lastJpegSpawn = now;
       await this.startJpegPipeline();
     }
 
-    if (this.jpegProcess && this.jpegProcess.stdin.writable) {
+    const p = this.jpegProcess;
+    if (p && p.stdin && p.stdin.writable) {
       try {
-        this.jpegProcess.stdin.write(jpegBuffer);
+        p.stdin.write(jpegBuffer);
         return true;
       } catch (error) {
         return false;
@@ -353,37 +359,72 @@ class VirtualCamera {
    * Start a JPEG-based pipeline
    */
   async startJpegPipeline() {
-    const drivers = await this.detectDrivers();
-    if (drivers.length === 0) {
+    if (this.jpegProcess) {
+      return true;
+    }
+    if (this.platform !== 'linux') {
       return false;
     }
 
-    const driver = drivers[0];
-    let ffmpegArgs;
+    // Prefer the device already resolved by start(); fall back to detection.
+    let device = this.device;
+    if (!device) {
+      const drivers = await this.detectDrivers();
+      if (drivers.length === 0) {
+        return false;
+      }
+      device = drivers[0].device || '/dev/video10';
+      this.device = device;
+    }
 
-    if (this.platform === 'linux') {
-      const device = driver.device || '/dev/video10';
-      ffmpegArgs = [
-        '-f', 'mjpeg',
-        '-i', 'pipe:0',
-        '-f', 'v4l2',
-        '-pix_fmt', 'yuyv422',
-        '-s', `${this.width}x${this.height}`,
-        device
-      ];
+    // Force a FIXED landscape output (scale keeping aspect + letterbox pad).
+    // The phone streams arbitrary sizes (e.g. 648x1152 in portrait); if the
+    // v4l2 output size changed per frame the device format would renegotiate
+    // and trip VIDIOC_G_FMT. A constant 1280x720 yuyv422 output keeps the
+    // device format stable and is what Meet/Zoom expect.
+    const W = 1280, H = 720;
+    const ffmpegArgs = [
+      '-f', 'mjpeg',
+      '-i', 'pipe:0',
+      '-vf', `scale=${W}:${H}:force_original_aspect_ratio=decrease,` +
+             `pad=${W}:${H}:(ow-iw)/2:(oh-ih)/2:color=black`,
+      '-pix_fmt', 'yuyv422',
+      '-f', 'v4l2',
+      device
+    ];
 
+    try {
       this.jpegProcess = spawn(ffmpegPath.replace(/"/g, ''), ffmpegArgs, {
         stdio: ['pipe', 'pipe', 'pipe']
       });
-
-      this.jpegProcess.on('error', (err) => {
-        console.error('FFmpeg JPEG error:', err);
-      });
-
-      return true;
+    } catch (err) {
+      console.error('FFmpeg JPEG spawn error:', err);
+      this.jpegProcess = null;
+      return false;
     }
 
-    return false;
+    this.jpegProcess.on('error', (err) => {
+      console.error('FFmpeg JPEG error:', err);
+      this.jpegProcess = null;
+    });
+
+    // CRITICAL: stdin emits 'error' (EPIPE) asynchronously when ffmpeg dies.
+    // Without this handler the unhandled event crashes the whole Electron main
+    // process. Swallow it — the 'close' handler already resets jpegProcess.
+    this.jpegProcess.stdin.on('error', (err) => {
+      console.log('FFmpeg JPEG stdin error (ignorado):', err && (err.code || err.message));
+    });
+
+    this.jpegProcess.stderr.on('data', (data) => {
+      console.log('FFmpeg JPEG:', data.toString());
+    });
+
+    this.jpegProcess.on('close', (code) => {
+      console.log('FFmpeg JPEG closed with code:', code);
+      this.jpegProcess = null;
+    });
+
+    return true;
   }
 
   /**

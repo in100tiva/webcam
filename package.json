@@ -22,7 +22,10 @@
     "streaming",
     "virtual-camera"
   ],
-  "author": "",
+  "author": {
+    "name": "Phone Webcam",
+    "email": "phonewebcam@localhost"
+  },
   "license": "MIT",
   "devDependencies": {
     "@types/node": "^20.10.0",
@@ -93,7 +96,7 @@
           "arch": ["x64"]
         }
       ],
-      "icon": "assets/icon.ico"
+      "icon": "assets/icon.png"
     },
     "nsis": {
       "oneClick": false,
@@ -106,8 +109,27 @@
       "icon": "assets/icon.icns"
     },
     "linux": {
-      "target": ["AppImage", "deb"],
-      "icon": "assets/icon.png"
+      "target": ["deb", "AppImage"],
+      "icon": "assets/icon.png",
+      "category": "Video",
+      "synopsis": "Use a câmera do celular como webcam via WiFi",
+      "description": "Phone Webcam transforma a câmera do seu celular em uma webcam no PC via WiFi, com suporte a webcam virtual (Zoom, Meet, Teams) através do v4l2loopback."
+    },
+    "deb": {
+      "depends": [
+        "v4l2loopback-dkms",
+        "libgtk-3-0",
+        "libnotify4",
+        "libnss3",
+        "libxss1",
+        "libxtst6",
+        "xdg-utils",
+        "libatspi2.0-0",
+        "libdrm2",
+        "libgbm1"
+      ],
+      "afterInstall": "build/deb-postinstall.sh",
+      "afterRemove": "build/deb-postremove.sh"
     }
   }
 }

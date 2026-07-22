@@ -1,0 +1,9 @@
+{
+  "appId": "com.phonewebcam.mobile",
+  "appName": "Phone Webcam",
+  "webDir": "www",
+  "server": {
+    "androidScheme": "https",
+    "cleartext": true
+  }
+}

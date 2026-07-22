@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 
 // Get the electronAPI from the preload script
 const electronAPI = window.electronAPI
@@ -11,6 +11,11 @@ export function useElectron() {
   const [currentFrame, setCurrentFrame] = useState(null)
   const [resolution, setResolution] = useState(null)
   const [fps, setFps] = useState(0)
+  const [vcamRunning, setVcamRunning] = useState(false)
+
+  // Gate for frame forwarding — read inside the frame listener without
+  // re-subscribing on every toggle (a ref survives re-renders).
+  const vcamActiveRef = useRef(false)
 
   // FPS counter
   const [frameCount, setFrameCount] = useState(0)
@@ -79,13 +84,21 @@ export function useElectron() {
     return await electronAPI.vcamInstallDriver()
   }, [])
 
-  const vcamStart = useCallback(async (options) => {
-    if (!electronAPI) return { success: false }
-    return await electronAPI.vcamStart(options)
+  // Start the virtual camera AND begin forwarding phone frames to it.
+  const startVirtualCam = useCallback(async (options) => {
+    if (!electronAPI) return { success: false, message: 'electronAPI indisponível' }
+    const res = await electronAPI.vcamStart(options)
+    if (res?.success) {
+      vcamActiveRef.current = true
+      setVcamRunning(true)
+    }
+    return res
   }, [])
 
-  const vcamStop = useCallback(async () => {
+  const stopVirtualCam = useCallback(async () => {
     if (!electronAPI) return { success: false }
+    vcamActiveRef.current = false
+    setVcamRunning(false)
     return await electronAPI.vcamStop()
   }, [])
 
@@ -97,6 +110,10 @@ export function useElectron() {
     const handleVideoFrame = (frameData) => {
       setCurrentFrame(`data:image/jpeg;base64,${frameData}`)
       setFrameCount(prev => prev + 1)
+      // Forward the raw base64 JPEG to the virtual camera when it is active.
+      if (vcamActiveRef.current && electronAPI.vcamSendFrame) {
+        electronAPI.vcamSendFrame(frameData)
+      }
     }
 
     // Handle control messages
@@ -172,7 +189,8 @@ export function useElectron() {
     isCleanWindowOpen,
     vcamDetectDrivers,
     vcamInstallDriver,
-    vcamStart,
-    vcamStop,
+    vcamRunning,
+    startVirtualCam,
+    stopVirtualCam,
   }
 }

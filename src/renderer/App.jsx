@@ -298,9 +298,10 @@ function CameraControls({ onSendToMobile, quality, setQuality, aspectRatio, setA
 }
 
 // Virtual Camera Component
-function VirtualCameraPanel({ vcamDetectDrivers, vcamInstallDriver, openCleanWindow }) {
+function VirtualCameraPanel({ vcamDetectDrivers, vcamInstallDriver, openCleanWindow, vcamRunning, startVirtualCam, stopVirtualCam, resolution, isConnected }) {
   const [drivers, setDrivers] = useState([])
   const [loading, setLoading] = useState(true)
+  const [busy, setBusy] = useState(false)
   const [cleanWindowOpen, setCleanWindowOpen] = useState(false)
   const { addToast } = useToast()
 
@@ -327,6 +328,26 @@ function VirtualCameraPanel({ vcamDetectDrivers, vcamInstallDriver, openCleanWin
     await openCleanWindow()
     setCleanWindowOpen(true)
     addToast('Janela limpa aberta - capture com OBS', 'success')
+  }
+
+  const handleToggleVirtualCam = async () => {
+    setBusy(true)
+    try {
+      if (vcamRunning) {
+        await stopVirtualCam()
+        addToast('Webcam virtual parada', 'success')
+      } else {
+        const res = await startVirtualCam({
+          driverId: drivers[0],
+          width: resolution?.width || 1280,
+          height: resolution?.height || 720,
+          fps: 30,
+        })
+        addToast(res?.message || 'Erro', res?.success ? 'success' : 'warning')
+      }
+    } finally {
+      setBusy(false)
+    }
   }
 
   const isWindows = typeof navigator !== 'undefined' && navigator.platform?.toLowerCase().includes('win')
@@ -395,12 +416,45 @@ function VirtualCameraPanel({ vcamDetectDrivers, vcamInstallDriver, openCleanWin
           </div>
         )}
 
+        {/* Direct virtual camera feed (Linux/macOS) */}
+        {drivers.length > 0 && !isWindows && (
+          <>
+            <Button
+              variant={vcamRunning ? 'destructive' : 'default'}
+              className="w-full glow-primary"
+              onClick={handleToggleVirtualCam}
+              disabled={busy || (!vcamRunning && !isConnected)}
+            >
+              <Video className="w-4 h-4 mr-2" />
+              {busy ? 'Aguarde...' : vcamRunning ? 'Parar Webcam Virtual' : 'Iniciar Webcam Virtual'}
+            </Button>
+
+            {!vcamRunning && !isConnected && (
+              <p className="text-xs text-muted-foreground text-center">
+                Conecte o celular primeiro para iniciar.
+              </p>
+            )}
+
+            {vcamRunning && (
+              <div className="p-3 bg-green-500/10 border border-green-500/20 rounded-md space-y-1">
+                <p className="text-xs font-medium text-green-500 flex items-center gap-1">
+                  <CircleDot className="w-3 h-3" /> Transmitindo para a webcam virtual
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  No Zoom/Meet/Teams selecione a câmera <strong>"Phone Webcam"</strong>.
+                  Se já estava aberto, recarregue a página.
+                </p>
+              </div>
+            )}
+          </>
+        )}
+
         <Separator />
 
-        {/* Clean Window Button */}
+        {/* Clean Window Button (OBS capture — útil no Windows) */}
         <Button
-          variant="default"
-          className="w-full glow-primary"
+          variant="secondary"
+          className="w-full"
           onClick={handleCleanWindow}
         >
           <Monitor className="w-4 h-4 mr-2" />
@@ -457,6 +511,9 @@ function AppContent() {
     openCleanWindow,
     vcamDetectDrivers,
     vcamInstallDriver,
+    vcamRunning,
+    startVirtualCam,
+    stopVirtualCam,
   } = useElectron()
 
   const { addToast } = useToast()
@@ -628,6 +685,11 @@ function AppContent() {
             vcamDetectDrivers={vcamDetectDrivers}
             vcamInstallDriver={vcamInstallDriver}
             openCleanWindow={openCleanWindow}
+            vcamRunning={vcamRunning}
+            startVirtualCam={startVirtualCam}
+            stopVirtualCam={stopVirtualCam}
+            resolution={resolution}
+            isConnected={isConnected}
           />
         </aside>
       </main>
