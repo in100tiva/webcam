@@ -187,6 +187,12 @@ function handleWsConnection(ws, req) {
     if (mainWindow && !mainWindow.isDestroyed()) {
       // Check if it's binary data (video frame) or text (control message)
       if (Buffer.isBuffer(data)) {
+        // Feed the virtual camera directly with the raw JPEG buffer — no
+        // base64 encode and no renderer round-trip. Keeps the hot path light
+        // and low-latency (avoids main->renderer->main per frame).
+        if (virtualCamera && virtualCamera.isRunning) {
+          virtualCamera.sendJpegFrame(data);
+        }
         const frameData = data.toString('base64');
         mainWindow.webContents.send('video-frame', frameData);
         // Also send to clean window if open

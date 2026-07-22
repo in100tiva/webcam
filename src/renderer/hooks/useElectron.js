@@ -110,10 +110,8 @@ export function useElectron() {
     const handleVideoFrame = (frameData) => {
       setCurrentFrame(`data:image/jpeg;base64,${frameData}`)
       setFrameCount(prev => prev + 1)
-      // Forward the raw base64 JPEG to the virtual camera when it is active.
-      if (vcamActiveRef.current && electronAPI.vcamSendFrame) {
-        electronAPI.vcamSendFrame(frameData)
-      }
+      // The virtual camera is now fed directly in the main process from the
+      // raw WebSocket frame — no renderer round-trip needed here.
     }
 
     // Handle control messages

@@ -341,10 +341,12 @@
     // Quality settings - optimized for network performance
     const qualitySettings = {
       low: { width: 640, height: 480, quality: 0.6, fps: 20 },
-      medium: { width: 1280, height: 720, quality: 0.65, fps: 20 },
+      medium: { width: 1280, height: 720, quality: 0.6, fps: 24 },
       high: { width: 1920, height: 1080, quality: 0.5, fps: 15 }  // Lower FPS for 1080p to avoid lag
     };
     let currentQuality = 'medium';
+    // Backpressure: não enfileirar mais que ~2 frames no socket (evita lag acumulado).
+    const MAX_BUFFERED_BYTES = 262144; // 256 KB
     let lastFrameTime = 0;
 
     // Get WebSocket URL from server
@@ -566,6 +568,14 @@
         }
 
         if (!ws || ws.readyState !== WebSocket.OPEN) {
+          requestAnimationFrame(captureAndSend);
+          return;
+        }
+
+        // Backpressure: se o WebSocket ainda não escoou os frames anteriores,
+        // DESCARTA este frame em vez de enfileirar. Isso impede o acúmulo de
+        // latência (travamento) quando a rede/PC não acompanham o ritmo.
+        if (ws.bufferedAmount > MAX_BUFFERED_BYTES) {
           requestAnimationFrame(captureAndSend);
           return;
         }
