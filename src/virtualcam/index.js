@@ -344,7 +344,8 @@ class VirtualCamera {
    * @param {Buffer} jpegBuffer - JPEG image data
    */
   async sendJpegFrame(jpegBuffer) {
-    if (!this.isRunning) return false;
+    // Don't feed/spawn while the device is being reset (module reloading).
+    if (!this.isRunning || this._resetting) return false;
 
     // Respawn the pipeline if it died, but throttle to avoid a tight
     // spawn/crash loop (30 fps => 30 ffmpeg spawns/s) when the device rejects.
@@ -377,6 +378,17 @@ class VirtualCamera {
     if (this.platform !== 'linux') {
       return false;
     }
+    // Mutex: prevent two concurrent spawns (which would leave an orphan).
+    if (this._spawning) return true;
+    this._spawning = true;
+    try {
+      return await this._doStartJpegPipeline();
+    } finally {
+      this._spawning = false;
+    }
+  }
+
+  async _doStartJpegPipeline() {
 
     // Prefer the device already resolved by start(); fall back to detection.
     let device = this.device;
@@ -405,10 +417,21 @@ class VirtualCamera {
       device
     ];
 
+    // Kill any prior producer(s) so we never leave an orphan writing to the
+    // device. Two producers on exclusive_caps=1 destabilize the device and
+    // break Chrome's camera enumeration.
+    if (!this._procs) this._procs = [];
+    for (const p of this._procs) {
+      try { p.stdin.end(); } catch (e) {}
+      try { p.kill('SIGKILL'); } catch (e) {}
+    }
+    this._procs = [];
+
     try {
       this.jpegProcess = spawn(ffmpegPath.replace(/"/g, ''), ffmpegArgs, {
         stdio: ['pipe', 'pipe', 'pipe']
       });
+      this._procs.push(this.jpegProcess);
     } catch (err) {
       console.error('FFmpeg JPEG spawn error:', err);
       this.jpegProcess = null;
@@ -484,6 +507,8 @@ class VirtualCamera {
    * Stop the virtual camera
    */
   stop() {
+    this.isRunning = false;
+
     if (this.ffmpegProcess) {
       this.ffmpegProcess.stdin.end();
       this.ffmpegProcess.kill('SIGTERM');
@@ -491,12 +516,20 @@ class VirtualCamera {
     }
 
     if (this.jpegProcess) {
-      this.jpegProcess.stdin.end();
+      try { this.jpegProcess.stdin.end(); } catch (e) {}
       this.jpegProcess.kill('SIGTERM');
       this.jpegProcess = null;
     }
 
-    this.isRunning = false;
+    // Kill any tracked producer(s) so nothing is left writing to the device.
+    if (this._procs) {
+      for (const p of this._procs) {
+        try { p.stdin.end(); } catch (e) {}
+        try { p.kill('SIGKILL'); } catch (e) {}
+      }
+      this._procs = [];
+    }
+
     return { success: true, message: 'Virtual camera parada' };
   }
 
