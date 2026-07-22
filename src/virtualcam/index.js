@@ -12,6 +12,13 @@ const os = require('os');
 let ffmpegPath;
 try {
   ffmpegPath = require('ffmpeg-static');
+  // In a packaged app the binary is inside app.asar and cannot be executed.
+  // electron-builder unpacks it to app.asar.unpacked (via asarUnpack) — point
+  // spawn at the real on-disk file. Without this, ffmpeg never starts and the
+  // virtual camera fails with a misleading "não foi possível abrir" error.
+  if (ffmpegPath && ffmpegPath.includes('app.asar')) {
+    ffmpegPath = ffmpegPath.replace('app.asar', 'app.asar.unpacked');
+  }
   // On Windows, ensure the path is quoted if it contains spaces
   if (os.platform() === 'win32' && ffmpegPath.includes(' ')) {
     ffmpegPath = `"${ffmpegPath}"`;
