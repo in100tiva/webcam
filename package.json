@@ -8,6 +8,7 @@
     "dev:vite": "vite",
     "build:vite": "vite build",
     "start": "npm run build:vite && electron .",
+    "setup:linux": "bash scripts/setup-linux.sh",
     "build": "npm run build:vite && electron-builder",
     "build:win": "npm run build:vite && electron-builder --win",
     "build:mac": "npm run build:vite && electron-builder --mac",
@@ -122,6 +123,7 @@
     "deb": {
       "depends": [
         "v4l2loopback-dkms",
+        "pkexec | policykit-1",
         "libgtk-3-0",
         "libnotify4",
         "libnss3",

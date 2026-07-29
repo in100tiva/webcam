@@ -30,25 +30,40 @@ tag `v*`.
 - ⛶ Tela cheia
 - 🎥 **Webcam Virtual** - Use em Zoom, Meet, Teams, etc.
 
-## Webcam Virtual
+## Webcam Virtual (Google Meet, Zoom, Teams)
 
-O Phone Webcam suporta **webcam virtual** - sua câmera do celular aparece como uma webcam real para outros aplicativos!
+O Phone Webcam expõe a câmera do celular como uma **webcam de verdade** do
+sistema operacional — é assim que o Meet/Zoom/Teams conseguem enxergá-la.
 
-### Drivers Suportados
+### Linux (Ubuntu / Debian / Mint) — passo a passo
 
-| Plataforma | Driver | Como Instalar |
+O device virtual chama-se **"Phone Webcam"** (`/dev/video10`) e é criado pelo
+driver `v4l2loopback`.
+
+1. **Instale pelo `.deb`** — ele já configura o `v4l2loopback` sozinho no
+   `apt install` (módulo, carga no boot, permissão do device). Se você roda do
+   código-fonte, faça o mesmo setup com `npm run setup:linux` (uma vez só).
+2. Abra o Phone Webcam e conecte o celular pelo QR Code.
+3. Clique em **"Iniciar Webcam Virtual"**.
+4. Abra o Google Meet (ou Zoom/Teams) **e dê F5** — o Chrome só enumera
+   câmeras novas ao recarregar a página.
+5. Em Configurações → Vídeo, selecione **"Phone Webcam"**.
+
+> **Por que `exclusive_caps=1`:** sem essa opção do módulo o Chrome **ignora**
+> o device (o Firefox aceita). O setup automático já aplica.
+
+> Se o device travar, o app se recupera sozinho: ele recarrega o módulo pedindo
+> a senha numa janela gráfica (PolicyKit/`pkexec`). Você não precisa de terminal.
+
+### Windows / macOS
+
+| Plataforma | Driver | Como instalar |
 |------------|--------|---------------|
 | Windows | OBS Virtual Camera | Instale o [OBS Studio](https://obsproject.com) |
-| Linux | v4l2loopback | `sudo apt install v4l2loopback-dkms` |
 | macOS | OBS Virtual Camera | Instale o [OBS Studio](https://obsproject.com) |
 
-### Como Usar a Webcam Virtual
-
-1. Instale o driver apropriado para seu sistema
-2. Abra o Phone Webcam e conecte seu celular
-3. Na seção "Webcam Virtual", clique em "Iniciar Webcam Virtual"
-4. Abra qualquer aplicativo (Zoom, Meet, Teams, Discord, etc.)
-5. Selecione "OBS Virtual Camera" como fonte de vídeo
+Conecte o celular, clique em "Iniciar Webcam Virtual" e selecione
+**"OBS Virtual Camera"** como fonte de vídeo no app de chamada.
 
 ## Requisitos
 
@@ -68,9 +83,17 @@ cd webcam
 # Instale as dependências
 npm install
 
+# Linux: configure a webcam virtual (uma vez só — pede sudo)
+npm run setup:linux
+
 # Execute o aplicativo
 npm start
 ```
+
+> `npm run setup:linux` faz exatamente o que o `.deb` faz no `apt install`:
+> instala o `v4l2loopback-dkms`, grava as opções do módulo
+> (`exclusive_caps=1`, `video_nr=10`, label "Phone Webcam"), carrega no boot e
+> deixa o `/dev/video10` gravável. Sem isso o Meet não tem o que listar.
 
 ### Build do Instalador
 
@@ -197,7 +220,19 @@ webcam/
 2. Use a rede WiFi de 5GHz se disponível
 3. Aproxime o celular do roteador
 
-### Webcam virtual não detectada
+### O Google Meet não lista a "Phone Webcam" (Linux)
+
+1. Recarregue a aba do Meet (**F5**) — o Chrome só enumera câmeras novas no load
+2. Confirme que o device existe: `ls -l /dev/video10` e
+   `cat /sys/class/video4linux/video10/name` (deve dizer `Phone Webcam`)
+3. Se não existir, rode o setup: `npm run setup:linux`
+   (ou reinstale o `.deb`, que faz isso sozinho)
+4. Confirme que clicou em **"Iniciar Webcam Virtual"** no app e que o celular
+   já está conectado — o device só entrega imagem com frames chegando
+5. Feche outros programas que estejam usando a câmera virtual (OBS, Cheese):
+   com `exclusive_caps=1` só um produtor por vez escreve no device
+
+### Webcam virtual não detectada (Windows/macOS)
 
 1. Instale o OBS Studio para obter o OBS Virtual Camera
 2. No OBS, vá em Ferramentas > Iniciar Câmera Virtual
