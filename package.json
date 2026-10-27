@@ -1,6 +1,6 @@
 {
   "name": "phone-webcam",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "description": "Use your phone camera as a webcam on your PC via WiFi",
   "main": "src/main.js",
   "scripts": {
@@ -91,14 +91,18 @@
       {
         "from": "drivers/",
         "to": "drivers",
-        "filter": ["**/*"]
+        "filter": [
+          "**/*"
+        ]
       }
     ],
     "win": {
       "target": [
         {
           "target": "nsis",
-          "arch": ["x64"]
+          "arch": [
+            "x64"
+          ]
         }
       ],
       "icon": "assets/icon.png"
@@ -114,7 +118,10 @@
       "icon": "assets/icon.icns"
     },
     "linux": {
-      "target": ["deb", "AppImage"],
+      "target": [
+        "deb",
+        "AppImage"
+      ],
       "icon": "assets/icon.png",
       "category": "Video",
       "synopsis": "Use a câmera do celular como webcam via WiFi",
