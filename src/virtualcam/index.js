@@ -279,7 +279,6 @@ class VirtualCamera {
       }
       this.device = device;
       this.isRunning = true;
-      this._crashCount = 0;
 
       // Pre-warm the MJPEG->v4l2 pipeline; the main process feeds phone frames.
       let ok = await this.startJpegPipeline();
@@ -290,7 +289,6 @@ class VirtualCamera {
       if (!ok || !this.jpegProcess) {
         await this.resetDevice();
         this.device = '/dev/video10';
-        this._crashCount = 0;
         ok = await this.startJpegPipeline();
         await new Promise((r) => setTimeout(r, 700));
       }
@@ -302,6 +300,7 @@ class VirtualCamera {
           message: 'Não foi possível preparar a webcam virtual. Tente reinstalar o app ou reiniciar o PC.'
         };
       }
+      this._startKeepalive();
       return { success: true, message: 'Virtual camera iniciada em ' + this.device };
     }
 
@@ -344,8 +343,25 @@ class VirtualCamera {
    * @param {Buffer} jpegBuffer - JPEG image data
    */
   async sendJpegFrame(jpegBuffer) {
-    // Don't feed/spawn while the device is being reset (module reloading).
-    if (!this.isRunning || this._resetting) return false;
+    this._lastJpeg = jpegBuffer;
+    this._lastFrameAt = Date.now();
+    return this._feedJpeg(jpegBuffer);
+  }
+
+  // Chrome drops a V4L2 camera after ~10s without frames and Meet never
+  // reopens it. While the phone is silent (Wi-Fi hiccup, screen off), repeat
+  // the last frame so the device never starves; live video resumes on its own.
+  _startKeepalive() {
+    clearInterval(this._keepalive);
+    this._keepalive = setInterval(() => {
+      if (this._lastJpeg && Date.now() - this._lastFrameAt > 200) {
+        this._feedJpeg(this._lastJpeg);
+      }
+    }, 100);
+  }
+
+  async _feedJpeg(jpegBuffer) {
+    if (!this.isRunning) return false;
 
     // Respawn the pipeline if it died, but throttle to avoid a tight
     // spawn/crash loop (30 fps => 30 ffmpeg spawns/s) when the device rejects.
@@ -454,23 +470,14 @@ class VirtualCamera {
       console.log('FFmpeg JPEG:', data.toString());
     });
 
-    this.jpegProcess.on('close', (code) => {
+    // No module reload here: mid-call Meet holds the device, so `modprobe -r`
+    // fails, pops a pkexec password prompt and starves the camera meanwhile.
+    // _feedJpeg respawns ffmpeg (throttled); start() still resets a wedged device.
+    const proc = this.jpegProcess;
+    proc.on('close', (code) => {
       console.log('FFmpeg JPEG closed with code:', code);
-      this.jpegProcess = null;
-      // Rapid, repeated crashes => the device is wedged. Recover it once via
-      // pkexec (reloads a fresh module) so the user never touches a terminal.
-      if (this.isRunning) {
-        const now = Date.now();
-        if (!this._lastCrash || (now - this._lastCrash) > 10000) this._crashCount = 0;
-        this._lastCrash = now;
-        this._crashCount = (this._crashCount || 0) + 1;
-        if (this._crashCount >= 3 && !this._resetting) {
-          this._crashCount = 0;
-          this._resetting = true;
-          console.log('Virtual camera wedged — auto-recovering device...');
-          this.resetDevice().then(() => { this._resetting = false; });
-        }
-      }
+      // An old producer closing must not drop the reference to its replacement.
+      if (this.jpegProcess === proc) this.jpegProcess = null;
     });
 
     return true;
@@ -508,6 +515,8 @@ class VirtualCamera {
    */
   stop() {
     this.isRunning = false;
+    clearInterval(this._keepalive);
+    this._lastJpeg = null;
 
     if (this.ffmpegProcess) {
       this.ffmpegProcess.stdin.end();
