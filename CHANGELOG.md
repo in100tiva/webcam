@@ -27,10 +27,12 @@ versões publicadas ficam em
   `body-parser` 1.20.6 → 1.20.9, `qs` e `express`, `@capacitor/core` e
   `@capacitor/android` 6.2.1 → 6.2.3.
 
-### Removido
+### Corrigido
 
-- Workflow do OpenSSF Scorecard (`.github/workflows/scorecard.yml`): a imagem
-  `gcr.io` não sobe no runner do GitHub Actions.
+- OpenSSF Scorecard restaurado com `scorecard-action` v2.6.0: o pin anterior
+  (v2.4.0) falhava ao puxar a imagem `gcr.io` no runner do GitHub Actions. O
+  workflow (`.github/workflows/scorecard.yml`) volta a publicar o SARIF no code
+  scanning e os resultados no OpenSSF.
 
 ## [2.0.1] - 2026-11-23
 
