@@ -7,7 +7,7 @@
     "apk": "cd android && ./gradlew assembleDebug"
   },
   "dependencies": {
-    "@capacitor/android": "^6.2.1",
+    "@capacitor/android": "^8.6.2",
     "@capacitor/cli": "^6.2.1",
     "@capacitor/core": "^6.2.1",
     "jsqr": "^1.4.0"
