@@ -1,0 +1,31 @@
+cff-version: 1.2.0
+message: "Se você usar este software em pesquisa ou em um produto, cite como abaixo."
+title: "webcam"
+abstract: >-
+  Aplicativo desktop em Electron que transforma o celular em webcam do PC pela
+  rede WiFi local. O celular transmite a câmera por WebSocket sobre SSL, com
+  pareamento por QR Code, e o PC publica o vídeo em uma webcam virtual
+  (v4l2loopback no Linux ou OBS Virtual Camera no Windows) que Google Meet,
+  Zoom e Teams reconhecem como câmera nativa. Sem nuvem e sem cadastro: o vídeo
+  não sai da rede local.
+type: software
+authors:
+  - given-names: Luan
+    family-names: Oliveira dos Santos
+    alias: in100tiva
+    website: "https://github.com/in100tiva"
+version: 2.0.1
+date-released: "2026-11-23"
+license: MIT
+repository-code: "https://github.com/in100tiva/webcam"
+url: "https://in100tiva.github.io/webcam/"
+keywords:
+  - webcam
+  - virtual-camera
+  - electron
+  - websocket
+  - android
+  - v4l2loopback
+  - obs-virtual-camera
+  - streaming
+  - wifi
