@@ -1,0 +1,84 @@
+name: Relatar um problema
+description: Algo não funcionou como esperado (conexão, webcam virtual, instalador).
+title: "[bug] "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Obrigado por reportar. Antes de abrir, confira a seção
+        [Solução de Problemas](https://github.com/in100tiva/webcam#solução-de-problemas)
+        do README — os casos mais comuns já estão lá.
+
+        **Não cole dados pessoais nem trechos da sua rede.** Logs podem ser
+        recortados; nada de senha, IP público ou token.
+
+  - type: dropdown
+    id: componente
+    attributes:
+      label: Onde aconteceu?
+      options:
+        - App do PC (Electron)
+        - Página do celular / conexão WiFi
+        - Webcam virtual no Linux (v4l2loopback)
+        - Webcam virtual no Windows/macOS (OBS)
+        - Instalador (.deb / .exe / .apk)
+        - Landing page / documentação
+        - Outro
+    validations:
+      required: true
+
+  - type: textarea
+    id: passos
+    attributes:
+      label: Passos para reproduzir
+      description: O que você fez, na ordem, até o problema aparecer.
+      placeholder: |
+        1. Instalei o .deb em Ubuntu 24.04
+        2. Abri o app e escaneei o QR com o celular
+        3. Cliquei em "Iniciar Webcam Virtual"
+        4. ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: esperado
+    attributes:
+      label: O que deveria acontecer
+    validations:
+      required: true
+
+  - type: textarea
+    id: obtido
+    attributes:
+      label: O que aconteceu de fato
+      description: Mensagem de erro, tela travada, device ausente (`ls -l /dev/video10`)...
+    validations:
+      required: true
+
+  - type: input
+    id: versao-app
+    attributes:
+      label: Versão do Phone Webcam
+      description: Aparece na tela inicial do app ou no nome do arquivo baixado.
+      placeholder: "2.0.1"
+    validations:
+      required: true
+
+  - type: input
+    id: ambiente
+    attributes:
+      label: Ambiente
+      description: Sistema do PC + versão, e celular + versão do Android.
+      placeholder: "Ubuntu 24.04 / Celular Motorola G32, Android 13"
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs (opcional)
+      description: |
+        Linux: rode o app pelo terminal com `npm start` e copie as linhas de erro.
+        Windows: `%APPDATA%\Phone Webcam\logs`. Recorte o que não for relevante.
+      render: shell

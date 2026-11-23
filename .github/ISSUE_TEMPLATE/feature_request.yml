@@ -1,0 +1,55 @@
+name: Sugerir uma melhoria
+description: Ideia de funcionalidade, ajuste de interface ou de desempenho.
+title: "[ideia] "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        O Phone Webcam é gratuito e local: tudo passa pela sua rede WiFi, sem
+        servidor intermediário. Antes de sugerir algo na nuvem, veja se cabe
+        nessa proposta — o projeto não pretende enviar vídeo para fora.
+
+  - type: textarea
+    id: problema
+    attributes:
+      label: Qual problema isso resolve?
+      description: Descreva a situação real que incomoda hoje.
+      placeholder: "Preciso alternar entre câmera frontal e traseira no meio da reunião e hoje é preciso..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: solucao
+    attributes:
+      label: Como você imagina a solução
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternativas
+    attributes:
+      label: Alternativas que já tentou
+      description: Opcional — outros apps, contornos manuais, configuração do sistema.
+
+  - type: dropdown
+    id: plataforma
+    attributes:
+      label: Plataforma afetada
+      multiple: true
+      options:
+        - PC Linux
+        - PC Windows
+        - PC macOS
+        - Celular Android
+        - Todas
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: disposicao
+    attributes:
+      label: Disponibilidade
+      options:
+        - label: Posso testar uma versão de desenvolvimento e dar retorno.
+        - label: Posso contribuir com um pull request.

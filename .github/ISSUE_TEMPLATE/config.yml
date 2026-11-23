@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Dúvida de instalação ou uso
+    url: https://github.com/in100tiva/webcam/discussions
+    about: Para "como faço X" e relatos de configuração, use as Discussions.
+  - name: Falha de segurança
+    url: https://github.com/in100tiva/webcam/security/advisories/new
+    about: Não abra issue pública para vulnerabilidades — use o relato privado.
+  - name: Versões corrigidas
+    url: https://github.com/in100tiva/webcam/security/advisories
+    about: Avisos de segurança já publicados e versões afetadas.

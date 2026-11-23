@@ -64,6 +64,9 @@
   .tag{font-size:11px;color:var(--accent);border:1px solid rgba(34,211,238,.35);background:rgba(34,211,238,.1);padding:3px 9px;border-radius:999px}
   code{background:#0d0d16;border:1px solid var(--border);border-radius:8px;padding:2px 8px;font-size:13px;color:var(--brand2)}
   footer{padding:40px 0 60px;text-align:center;color:var(--muted);font-size:13px;border-top:1px solid var(--border)}
+  footer a{color:var(--brand2);text-decoration:none}
+  footer a:hover{text-decoration:underline}
+  footer .flinks{margin-bottom:10px}
 </style>
 </head>
 <body>
@@ -107,16 +110,16 @@
           <div class="os">🐧</div><h3>Linux</h3>
           <div class="meta">Pacote .deb · Ubuntu / Debian / Mint</div>
           <a class="btn primary" href="https://github.com/in100tiva/webcam/releases/latest/download/PhoneWebcam-linux.deb">
-            <span class="ico">⬇️</span><span>Baixar .deb <small>~96 MB</small></span></a>
+            <span class="ico">⬇️</span><span>Baixar .deb <small>~92 MB</small></span></a>
           <p class="meta" style="margin-top:14px"><code>sudo apt install ./PhoneWebcam-linux.deb</code></p>
         </div>
 
         <div class="dcard">
           <div class="os">🪟</div><h3>Windows</h3>
           <div class="meta">Instalador .exe · Windows 10/11 (64-bit)</div>
-          <a class="btn primary" href="https://github.com/in100tiva/webcam/releases/latest/download/PhoneWebcam-windows.exe">
-            <span class="ico">⬇️</span><span>Baixar .exe <small>instalador</small></span></a>
-          <p class="meta" style="margin-top:14px">Requer <b>OBS Virtual Camera</b> (o app orienta).</p>
+          <a class="btn disabled" href="#download" aria-disabled="true">
+            <span class="ico">⏳</span><span>Em breve <small>ainda não publicado</small></span></a>
+          <p class="meta" style="margin-top:14px">Por enquanto rode do código-fonte (<code>npm run dev</code>) com o <b>OBS Virtual Camera</b>.</p>
         </div>
 
         <div class="dcard">
@@ -133,8 +136,14 @@
 
   <footer>
     <div class="wrap">
+      <div class="flinks">
+        <a href="https://github.com/in100tiva/webcam">GitHub</a> ·
+        <a href="https://github.com/in100tiva/webcam/releases">Releases</a> ·
+        <a href="https://github.com/in100tiva/webcam/blob/main/SECURITY.md">Segurança</a> ·
+        <a href="https://github.com/in100tiva/webcam/issues">Problemas</a>
+      </div>
       Phone Webcam · streaming local por WiFi · nada sai da sua rede.<br/>
-      PC e celular precisam estar na mesma rede WiFi.
+      PC e celular precisam estar na mesma rede WiFi. Licença MIT.
     </div>
   </footer>
 

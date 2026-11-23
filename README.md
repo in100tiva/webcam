@@ -1,6 +1,9 @@
 # Phone Webcam
 
+[![Release](https://img.shields.io/github/v/release/in100tiva/webcam?style=flat-square&label=release&color=7c3aed)](https://github.com/in100tiva/webcam/releases/latest)
+[![Landing page](https://img.shields.io/badge/landing%20page-online-7c3aed?style=flat-square)](https://in100tiva.github.io/webcam/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-3DA639?style=flat-square)](LICENSE)
+[![CodeQL](https://github.com/in100tiva/webcam/actions/workflows/codeql.yml/badge.svg?branch=main)](https://github.com/in100tiva/webcam/actions/workflows/codeql.yml)
 ![Electron](https://img.shields.io/badge/Electron-desktop-47848F?style=flat-square&logo=electron&logoColor=white)
 ![Android](https://img.shields.io/badge/Android-APK-3DDC84?style=flat-square&logo=android&logoColor=white)
 ![Windows](https://img.shields.io/badge/Windows-10%2F11-0078D6?style=flat-square&logo=windows&logoColor=white)
@@ -18,12 +21,17 @@ Baixe os instaladores na [página de Releases](https://github.com/in100tiva/webc
 | Plataforma | Arquivo |
 |---|---|
 | 🐧 Linux (Ubuntu/Debian/Mint) | `PhoneWebcam-linux.deb` — `sudo apt install ./PhoneWebcam-linux.deb` (configura a webcam virtual sozinho) |
-| 🪟 Windows 10/11 | `PhoneWebcam-windows.exe` |
 | 🤖 Android (celular) | `PhoneWebcam-android.apk` |
+| 🪟 Windows 10/11 | _em breve_ — por enquanto rode do código-fonte (`npm run dev`) e use a OBS Virtual Camera |
 
-Landing page de download em `site/` (deploy na Vercel). Os instaladores são
-gerados automaticamente pelo CI (`.github/workflows/release.yml`) ao enviar uma
-tag `v*`.
+A [landing page](https://in100tiva.github.io/webcam/) mostra os mesmos downloads
+em uma página única. Ela fica em `site/` e é publicada no GitHub Pages por
+`.github/workflows/pages.yml` a cada mudança na pasta. Os instaladores são
+gerados pelo CI (`.github/workflows/release.yml`) quando uma tag `v*` é enviada.
+
+> Instaladores não têm assinatura comercial: o Windows pode exibir o aviso do
+> SmartScreen e o `apt` pode reclamar da origem. Confira o nome do arquivo e
+> baixe apenas da página oficial de Releases.
 
 ## Funcionalidades
 
@@ -262,6 +270,30 @@ webcam/
 - **QRCode** - Geração de QR codes
 - **selfsigned** - Certificados SSL auto-assinados
 
+## Limitações conhecidas
+
+- **Sem autenticação:** o pareamento é por QR Code dentro da rede local. Quem
+  estiver na mesma WiFi alcança as portas 8443/8444 — use em rede confiável.
+  Detalhes em [SECURITY.md](SECURITY.md).
+- **Instaladores sem assinatura comercial:** Windows SmartScreen e `apt` podem
+  avisar sobre a origem.
+- **Windows/macOS** dependem do OBS Virtual Camera instalado à parte; o `.deb`
+  no Linux já configura tudo.
+
+## Contribuindo
+
+Sugestões e correções são bem-vindas: veja [CONTRIBUTING.md](CONTRIBUTING.md)
+para o ambiente de desenvolvimento e os padrões do projeto. Dúvidas de
+instalação vão nas [Discussions](https://github.com/in100tiva/webcam/discussions);
+o código de conduta está em [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md).
+
+## Segurança
+
+Vulnerabilidades devem ser reportadas em privado, nunca em issue pública:
+<https://github.com/in100tiva/webcam/security/advisories/new>. Escopo, prazos e
+limitações do modelo de ameaça estão em [SECURITY.md](SECURITY.md).
+
 ## Licença
 
-MIT
+[MIT](LICENSE) © 2026 Luan Oliveira dos Santos
+
