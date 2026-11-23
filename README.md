@@ -1,5 +1,14 @@
 # Phone Webcam
 
+[![License: MIT](https://img.shields.io/badge/license-MIT-3DA639?style=flat-square)](LICENSE)
+![Electron](https://img.shields.io/badge/Electron-desktop-47848F?style=flat-square&logo=electron&logoColor=white)
+![Android](https://img.shields.io/badge/Android-APK-3DDC84?style=flat-square&logo=android&logoColor=white)
+![Windows](https://img.shields.io/badge/Windows-10%2F11-0078D6?style=flat-square&logo=windows&logoColor=white)
+![Linux](https://img.shields.io/badge/Linux-deb-FCC624?style=flat-square&logo=linux&logoColor=black)
+
+> **Em 30 segundos:** transforma o celular em webcam do PC pela WiFi. O app desktop recebe o vídeo por WebSocket e publica em uma webcam virtual que Meet, Zoom e Teams enxergam como câmera nativa.
+
+
 Use a câmera do seu celular como webcam no PC via WiFi usando Electron.js.
 
 ## ⬇️ Download
