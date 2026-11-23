@@ -1,0 +1,45 @@
+name: OpenSSF Scorecard
+
+# Mede práticas de segurança do repositório (branch protection, dependências
+# fixadas, permissões de token, revisão de código...) e publica o resultado
+# no Security > Code scanning e no painel público do Scorecard.
+# Docs: https://github.com/ossf/scorecard-action
+
+on:
+  branch_protection_rule:
+  schedule:
+    - cron: "30 5 * * 1"
+  push:
+    branches: [main]
+
+permissions: read-all
+
+jobs:
+  analise:
+    name: Análise do Scorecard
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write # envia o SARIF para o Code scanning
+      id-token: write # publica o resultado assinado (publish_results)
+      actions: read
+      contents: read
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - name: Rodar o Scorecard
+        uses: ossf/scorecard-action@62b2cac7ed8198b15735ed49ab1e5cf35480ba46 # v2.4.0
+        with:
+          results_file: results.sarif
+          results_format: sarif
+          publish_results: true
+      - name: Guardar o SARIF como artefato
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: scorecard-sarif
+          path: results.sarif
+          retention-days: 7
+      - name: Enviar para o Code scanning
+        uses: github/codeql-action/upload-sarif@d2aacf54c2fbc910db8d7ec338fdb54ea48c692d # v3
+        with:
+          sarif_file: results.sarif

@@ -4,6 +4,8 @@
 [![Landing page](https://img.shields.io/badge/landing%20page-online-7c3aed?style=flat-square)](https://in100tiva.github.io/webcam/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-3DA639?style=flat-square)](LICENSE)
 [![CodeQL](https://github.com/in100tiva/webcam/actions/workflows/codeql.yml/badge.svg?branch=main)](https://github.com/in100tiva/webcam/actions/workflows/codeql.yml)
+[![CI](https://github.com/in100tiva/webcam/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/in100tiva/webcam/actions/workflows/ci.yml)
+[![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/in100tiva/webcam/badge)](https://securityscorecards.dev/viewer/?uri=github.com/in100tiva/webcam)
 ![Electron](https://img.shields.io/badge/Electron-desktop-47848F?style=flat-square&logo=electron&logoColor=white)
 ![Android](https://img.shields.io/badge/Android-APK-3DDC84?style=flat-square&logo=android&logoColor=white)
 ![Windows](https://img.shields.io/badge/Windows-10%2F11-0078D6?style=flat-square&logo=windows&logoColor=white)
@@ -11,6 +13,11 @@
 
 > **Em 30 segundos:** transforma o celular em webcam do PC pela WiFi. O app desktop recebe o vídeo por WebSocket e publica em uma webcam virtual que Meet, Zoom e Teams enxergam como câmera nativa.
 
+<p align="center">
+  <a href="https://in100tiva.github.io/webcam/">
+    <img src="docs/preview.png" alt="Landing page do Phone Webcam com download para Linux, Windows e Android" width="760">
+  </a>
+</p>
 
 Use a câmera do seu celular como webcam no PC via WiFi usando Electron.js.
 
@@ -18,11 +25,12 @@ Use a câmera do seu celular como webcam no PC via WiFi usando Electron.js.
 
 Baixe os instaladores na [página de Releases](https://github.com/in100tiva/webcam/releases/latest):
 
-| Plataforma | Arquivo |
-|---|---|
-| 🐧 Linux (Ubuntu/Debian/Mint) | `PhoneWebcam-linux.deb` — `sudo apt install ./PhoneWebcam-linux.deb` (configura a webcam virtual sozinho) |
-| 🤖 Android (celular) | `PhoneWebcam-android.apk` |
-| 🪟 Windows 10/11 | _em breve_ — por enquanto rode do código-fonte (`npm run dev`) e use a OBS Virtual Camera |
+| Plataforma | Arquivo | Tamanho |
+|---|---|---|
+| 🐧 Linux (Ubuntu/Debian/Mint) | [`PhoneWebcam-linux.deb`](https://github.com/in100tiva/webcam/releases/latest/download/PhoneWebcam-linux.deb) — `sudo apt install ./PhoneWebcam-linux.deb` (configura a webcam virtual sozinho) | ~92 MB |
+| 🐧 Linux (qualquer distro) | [`PhoneWebcam-linux.AppImage`](https://github.com/in100tiva/webcam/releases/latest/download/PhoneWebcam-linux.AppImage) — `chmod +x` e execute | ~134 MB |
+| 🪟 Windows 10/11 (64-bit) | [`PhoneWebcam-windows.exe`](https://github.com/in100tiva/webcam/releases/latest/download/PhoneWebcam-windows.exe) — instalador NSIS; use junto com o **OBS Virtual Camera** | ~97 MB |
+| 🤖 Android (celular) | [`PhoneWebcam-android.apk`](https://github.com/in100tiva/webcam/releases/latest/download/PhoneWebcam-android.apk) | ~3,8 MB |
 
 A [landing page](https://in100tiva.github.io/webcam/) mostra os mesmos downloads
 em uma página única. Ela fica em `site/` e é publicada no GitHub Pages por
