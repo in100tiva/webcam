@@ -5,7 +5,6 @@
 [![License: MIT](https://img.shields.io/badge/license-MIT-3DA639?style=flat-square)](LICENSE)
 [![CodeQL](https://github.com/in100tiva/webcam/actions/workflows/codeql.yml/badge.svg?branch=main)](https://github.com/in100tiva/webcam/actions/workflows/codeql.yml)
 [![CI](https://github.com/in100tiva/webcam/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/in100tiva/webcam/actions/workflows/ci.yml)
-[![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/in100tiva/webcam/badge)](https://securityscorecards.dev/viewer/?uri=github.com/in100tiva/webcam)
 ![Electron](https://img.shields.io/badge/Electron-desktop-47848F?style=flat-square&logo=electron&logoColor=white)
 ![Android](https://img.shields.io/badge/Android-APK-3DDC84?style=flat-square&logo=android&logoColor=white)
 ![Windows](https://img.shields.io/badge/Windows-10%2F11-0078D6?style=flat-square&logo=windows&logoColor=white)
