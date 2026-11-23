@@ -214,10 +214,11 @@ flowchart LR
 
     APPS["Zoom · Google Meet · Teams · Discord"]
 
-    HTTPS -. "QR Code / IP na rede local" .-> CAM
+    HTTPS -.->|"QR Code / IP na rede local"| CAM
     CAM --> ENC --> WS
     HTTP --> HTTPS
-    WS -->|"WiFi, tráfego local"| FF --> VC --> APPS
+    WS -->|"WiFi, tráfego local"| FF
+    FF --> VC --> APPS
 ```
 
 Todo o caminho acontece na **rede local**: o celular fala direto com o PC, sem
