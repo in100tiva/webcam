@@ -36,6 +36,10 @@ em uma página única. Ela fica em `site/` e é publicada no GitHub Pages por
 `.github/workflows/pages.yml` a cada mudança na pasta. Os instaladores são
 gerados pelo CI (`.github/workflows/release.yml`) quando uma tag `v*` é enviada.
 
+📘 O passo a passo de instalação por plataforma (o que o `.deb` configura, como
+gerar `.apk`/`.AppImage` e as portas de rede) está em
+**[DISTRIBUICAO.md](DISTRIBUICAO.md)**.
+
 > Instaladores não têm assinatura comercial: o Windows pode exibir o aviso do
 > SmartScreen e o `apt` pode reclamar da origem. Confira o nome do arquivo e
 > baixe apenas da página oficial de Releases.
@@ -193,35 +197,41 @@ webcam/
 
 ## Arquitetura
 
+```mermaid
+flowchart LR
+    subgraph CEL["Celular — Android (app) ou navegador"]
+        CAM["Câmera<br/>getUserMedia()"]
+        ENC["Frames JPEG em base64"]
+    end
+
+    subgraph PC["PC — app Electron"]
+        HTTP["HTTP :8080<br/>redirect"]
+        HTTPS["HTTPS :8443<br/>página mobile + QR Code"]
+        WS["WebSocket<br/>WSS :8444 · ws:// :8445"]
+        FF["FFmpeg<br/>frames → stream de vídeo"]
+        VC["Webcam virtual<br/>v4l2loopback /dev/video10"]
+    end
+
+    APPS["Zoom · Google Meet · Teams · Discord"]
+
+    HTTPS -. "QR Code / IP na rede local" .-> CAM
+    CAM --> ENC --> WS
+    HTTP --> HTTPS
+    WS -->|"WiFi, tráfego local"| FF --> VC --> APPS
 ```
-+------------------+          WiFi           +------------------+
-|     Celular      |  <------------------->  |        PC        |
-|                  |                         |                  |
-|  Camera API      |    HTTPS (porta 8443)   |  Electron App    |
-|  getUserMedia()  |  <------------------->  |  Express Server  |
-|                  |                         |                  |
-|  WebSocket       |     WSS (porta 8444)    |  WebSocket       |
-|  Client (SSL)    |  -------------------->  |  Server (SSL)    |
-|                  |    frames JPEG Base64   |                  |
-+------------------+                         +------------------+
-                                                     |
-                                                     v
-                                            +------------------+
-                                            |  Virtual Camera  |
-                                            |  (FFmpeg + Driver)|
-                                            +------------------+
-                                                     |
-                                                     v
-                                            +------------------+
-                                            |  Zoom, Meet, etc |
-                                            +------------------+
-```
+
+Todo o caminho acontece na **rede local**: o celular fala direto com o PC, sem
+servidor intermediário e sem nuvem. O navegador usa `wss://` (8444) e o app
+Android nativo usa `ws://` puro (8445).
 
 ## Portas Utilizadas
 
-- **8080**: Servidor HTTP (redirecionamento para HTTPS)
-- **8443**: Servidor HTTPS (serve a página mobile)
-- **8444**: Servidor WebSocket SSL (streaming de vídeo)
+| Porta | Protocolo | Uso |
+|------:|-----------|-----|
+| 8080 | HTTP | Redireciona para HTTPS (não é fatal se estiver ocupada) |
+| 8443 | HTTPS | Serve a página mobile (QR Code) e a API de status |
+| 8444 | WebSocket + SSL | Streaming de vídeo para o navegador |
+| 8445 | WebSocket puro | Streaming de vídeo para o app Android nativo |
 
 ## Solução de Problemas
 
@@ -292,7 +302,8 @@ webcam/
 Sugestões e correções são bem-vindas: veja [CONTRIBUTING.md](CONTRIBUTING.md)
 para o ambiente de desenvolvimento e os padrões do projeto. Dúvidas de
 instalação vão nas [Discussions](https://github.com/in100tiva/webcam/discussions);
-o código de conduta está em [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md).
+o código de conduta está em [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) e os canais
+de ajuda estão em [SUPPORT.md](SUPPORT.md).
 
 ## Segurança
 

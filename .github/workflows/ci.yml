@@ -29,6 +29,11 @@ jobs:
           cache: npm
       - name: Instalar dependências
         run: npm ci
+      - name: Checar sintaxe do processo principal (Node)
+        run: |
+          node --check src/main.js
+          node --check src/preload.js
+          node --check src/virtualcam/index.js
       - name: Build do renderer (Vite)
         run: npm run build:vite
       - name: Conferir os arquivos publicados
